@@ -1,0 +1,595 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Registration Success",
+    "description": "Verify user can register successfully with valid email and password, and receives confirmation.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page"
+      },
+      {
+        "type": "action",
+        "description": "Enter valid email and valid password in registration form"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm registration success message is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a new user record is created in backend"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Registration Validation Errors",
+    "description": "Verify appropriate error messages are shown for invalid registration inputs.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page"
+      },
+      {
+        "type": "action",
+        "description": "Enter invalid email format and submit"
+      },
+      {
+        "type": "assertion",
+        "description": "Display email format validation error message"
+      },
+      {
+        "type": "action",
+        "description": "Enter a password below minimum length and submit"
+      },
+      {
+        "type": "assertion",
+        "description": "Display password strength or length validation error"
+      },
+      {
+        "type": "action",
+        "description": "Leave required fields empty and submit"
+      },
+      {
+        "type": "assertion",
+        "description": "Display required field validation messages"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "User Login Success",
+    "description": "Verify user can log in successfully with correct credentials and receive JWT token.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter valid registered email and password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is redirected to the home page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify JWT token is stored securely in session/local storage"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "User Login Failure with Incorrect Credentials",
+    "description": "Verify login fails with incorrect email or password and appropriate error message is shown.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter valid email but incorrect password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Display invalid login credentials error message"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure user is not redirected to home page"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Session Expiration Auto-Redirect",
+    "description": "Verify that when JWT token expires, user session ends and user is redirected to login page.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login successfully and obtain JWT token"
+      },
+      {
+        "type": "action",
+        "description": "Simulate token expiration or wait for token to expire"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access protected page such as Workflow Editor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user session is invalidated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is redirected to login page"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Home Page Navigation",
+    "description": "Verify home page loads successfully with navigation links to register and login pages.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the root/home page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify page renders minimalist layout in black/white theme"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify navigation links to registration and login pages are visible"
+      },
+      {
+        "type": "action",
+        "description": "Click navigation links and verify correct pages load"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Access Protected Routes Without Authentication",
+    "description": "Verify unauthenticated users cannot access workflow editor and are redirected to login.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to navigate directly to workflow editor URL without login"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify application redirects to login page"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Drag and Drop Node Addition in Workflow Editor",
+    "description": "Verify users can add nodes to the workflow canvas using drag-and-drop with multiple node types.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to workflow editor"
+      },
+      {
+        "type": "action",
+        "description": "Drag each available node type onto the canvas"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify nodes appear correctly on the canvas"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to add node outside canvas boundaries"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify node is not added or proper error is indicated"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Visual Workflow Node Configuration",
+    "description": "Verify users can configure node properties dynamically and changes persist in workflow editor.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add node to workflow canvas"
+      },
+      {
+        "type": "action",
+        "description": "Open node configuration panel"
+      },
+      {
+        "type": "action",
+        "description": "Modify node properties with valid inputs"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes reflect immediately on node and in node data"
+      },
+      {
+        "type": "action",
+        "description": "Enter invalid node configuration data"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation prevents saving invalid configuration"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Edge Connection Validity and Management",
+    "description": "Verify users can create, move, and delete edges between nodes ensuring only valid connections allowed.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add multiple nodes to canvas"
+      },
+      {
+        "type": "action",
+        "description": "Draw edges between nodes using drag to connect"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify edges are visible and correctly connected to nodes"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to create invalid edge connections (e.g., self-loop or disallowed node types)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify invalid connections are prevented and appropriate error shown"
+      },
+      {
+        "type": "action",
+        "description": "Move existing edges to other valid nodes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify edges update connections correctly"
+      },
+      {
+        "type": "action",
+        "description": "Delete edges using context menu or delete key"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify edges are removed from canvas"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Workflow Save and Load",
+    "description": "Verify users can save workflows with metadata to backend and load existing workflows for editing.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create workflow with multiple nodes and edges"
+      },
+      {
+        "type": "action",
+        "description": "Input workflow metadata such as name and description"
+      },
+      {
+        "type": "action",
+        "description": "Save workflow to backend"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify save success message and backend persistence"
+      },
+      {
+        "type": "action",
+        "description": "Load previously saved workflows from list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify loaded workflow matches saved state including nodes, edges, and metadata"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Workflow Load Failure Handling",
+    "description": "Verify errors are handled gracefully when loading invalid or non-existent workflows.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to load a workflow with invalid ID or corrupted data"
+      },
+      {
+        "type": "assertion",
+        "description": "Display meaningful error message to user"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify application remains stable without crashing"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Credential Management Add/Edit/Delete",
+    "description": "Verify users can add, edit, and delete credentials securely with input validation.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to credentials management section"
+      },
+      {
+        "type": "action",
+        "description": "Add new credential with valid fields including API key or password"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify credential is added and persisted securely in backend"
+      },
+      {
+        "type": "action",
+        "description": "Edit existing credential to update fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify credential changes are saved correctly"
+      },
+      {
+        "type": "action",
+        "description": "Delete a credential"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify credential is removed from backend and UI"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Credential Input Validation",
+    "description": "Verify proper validation prevents submission of credentials with invalid API keys, empty fields, or improper formats.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to add credential with empty required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Show required field validation errors"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to add credential with invalid API key format"
+      },
+      {
+        "type": "assertion",
+        "description": "Show API key format validation error"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Assign Credentials to Workflow Nodes",
+    "description": "Verify users can link saved credentials to tool nodes within workflows and changes persist.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add tool node to workflow"
+      },
+      {
+        "type": "action",
+        "description": "Open node configuration and assign an existing credential"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify credential link is saved and reflected in workflow data"
+      },
+      {
+        "type": "action",
+        "description": "Remove or update credential assignment from node"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes persist correctly"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Run Workflow and Stream Execution Output",
+    "description": "Verify that executing a workflow streams realtime output to UI, logs progress, and handles any execution errors.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create and save a valid workflow with executable nodes"
+      },
+      {
+        "type": "action",
+        "description": "Start workflow execution"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify realtime output stream is displayed in UI progressively"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify execution logs capture all node states and messages"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI updates with execution success status upon completion"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Handle Workflow Execution Errors Gracefully",
+    "description": "Verify workflow execution errors are shown clearly without crashing the UI and allow user to retry.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a workflow with nodes designed to fail during execution"
+      },
+      {
+        "type": "action",
+        "description": "Run the workflow"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify errors display clearly in output and logs pane"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI remains responsive and user can retry execution"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "View Past Workflow Execution History",
+    "description": "Verify users can view history list of past workflow executions, including status and timestamps.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Access execution history section for a saved workflow"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify list displays multiple execution records with status and start/end times"
+      },
+      {
+        "type": "action",
+        "description": "Select past execution to view detailed logs and output"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify detailed logs and output match historical execution data"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Responsive UI Rendering and Theming",
+    "description": "Verify the UI is responsive across various screen sizes and adheres to black/white minimalist theme.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open application in desktop, tablet, and mobile viewport sizes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI elements resize and reflow correctly without overlapping or clipping"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify black/white theme colors and contrast meet design requirements"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Keyboard Navigation and Accessibility",
+    "description": "Verify all interactive elements including forms, workflow editor, and menus are accessible and operable via keyboard only.",
+    "category": "ui",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate throughout the app and workflow editor using only keyboard inputs (tab, shift+tab, enter, space, arrow keys)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify focus indicators are visible on interactive elements"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all functionalities can be accessed and triggered without mouse"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Display Loading Indicators",
+    "description": "Verify loading spinners or progress indicators are shown during backend API calls such as login, workflow save/load, and execution.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger workflow save operation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify loading indicator is shown until save completes"
+      },
+      {
+        "type": "action",
+        "description": "Trigger workflow execution start"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify loading or progress indicator is visible during execution initialization"
+      }
+    ]
+  }
+]

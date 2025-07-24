@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "loginUser": "lawsa",
+  "loginPassword": "Lawsa##7017",
+  "executionArgs": {
+    "projectName": "n8n-frontend",
+    "projectPath": "D:/n8n(minimal)/n8n-frontend",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-gaCPBZd-6MLxNOiNL_Lzb9Z3EaN0CM_MiInN-Ifgcm4bnfwY7ZBYPkjngvtD3WKv4X7KXYHJsUE8t_9TxbbnWYtVjCruraIAWsMYJYxo0G5dp8izk-LLZQiTWFoslRqgsxk"
+    }
+  },
+  "proxy": "http://2a6e9cfc-ac7f-4f29-8df7-8ef1b26a99c7:UeCM66M3SP6nRJdg81ckprkNXxTMPTLI@tun.testsprite.com:8080"
+}

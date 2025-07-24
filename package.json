@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@nauverse/react-aurora-background": "^1.0.12",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "mongodb": "^6.17.0",
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "graph": {
+    "nodes": [
+      {
+        "id": "agent",
+        "type": "agentic",
+        "config": {}
+      },
+      {
+        "id": "model",
+        "type": "model",
+        "config": {
+          "provider": "groq",
+          "model_name": "llama3-8b-8192"
+        }
+      }
+    ],
+    "edges": [
+      {"source": "agent", "target": "model"}
+    ]
+  },
+  "input": "Say hello!",
+  "thread_id": "test-agentic"
+} 

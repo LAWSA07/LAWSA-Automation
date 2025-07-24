@@ -1,0 +1,21 @@
+{
+  "graph": {
+    "nodes": [
+      { "id": "agent", "type": "agentic", "config": {} },
+      { "id": "model", "type": "model", "config": { "provider": "groq", "model_name": "llama3-8b-8192" } },
+      { "id": "search", "type": "tool", "config": { "tool_name": "tavily_search" } },
+      { "id": "multiply", "type": "tool", "config": { "tool_name": "multiply" } },
+      { "id": "email", "type": "tool", "config": { "tool_name": "send_email" } },
+      { "id": "slack", "type": "tool", "config": { "tool_name": "post_to_slack" } }
+    ],
+    "edges": [
+      {"source": "agent", "target": "model"},
+      {"source": "agent", "target": "search"},
+      {"source": "agent", "target": "multiply"},
+      {"source": "agent", "target": "email"},
+      {"source": "agent", "target": "slack"}
+    ]
+  },
+  "input": "Search for the latest AI news, multiply 6 by 7, send an email to singhaswal0007@gmail.com with subject 'Test' and body 'Hello', and post 'Hello Slack' to #general.",
+  "thread_id": "test-extended"
+} 

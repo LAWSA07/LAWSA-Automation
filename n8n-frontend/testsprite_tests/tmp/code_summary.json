@@ -1,0 +1,48 @@
+{
+  "tech_stack": [
+    "JavaScript/TypeScript",
+    "React",
+    "Vite",
+    "React Router",
+    "React Flow (for node editor)",
+    "Jest/React Testing Library (for tests)",
+    "CSS"
+  ],
+  "features": [
+    {
+      "name": "Authentication (Register/Login)",
+      "description": "User registration and login forms, JWT-based authentication, session management.",
+      "files": ["src/App.tsx"]
+    },
+    {
+      "name": "Home Page",
+      "description": "Minimalist landing page with navigation to register/login.",
+      "files": ["src/App.tsx"]
+    },
+    {
+      "name": "Workflow Editor",
+      "description": "Visual drag-and-drop workflow/node editor with node types, edge management, and configuration.",
+      "files": ["src/components/WorkflowEditor.tsx", "src/components/CustomNode.tsx", "src/components/AgentNode.tsx", "src/components/CustomEdge.tsx"]
+    },
+    {
+      "name": "Workflow Management",
+      "description": "Create, save, load, and list workflows. Integrates with backend APIs.",
+      "files": ["src/api.js", "src/components/WorkflowEditor.tsx"]
+    },
+    {
+      "name": "Credentials Management",
+      "description": "Add, edit, delete credentials and assign to tool nodes.",
+      "files": ["src/components/WorkflowEditor.tsx", "src/api.js"]
+    },
+    {
+      "name": "Execution & Output",
+      "description": "Run workflows, stream output, display execution logs and errors.",
+      "files": ["src/components/WorkflowEditor.tsx", "src/api.js"]
+    },
+    {
+      "name": "UI/UX & Theming",
+      "description": "Minimalist, responsive, black/white UI with accessibility and error handling.",
+      "files": ["src/App.tsx", "src/App.css", "src/theme.css"]
+    }
+  ]
+} 

@@ -1,0 +1,173 @@
+body {
+  font-family: 'Inter', 'Space Grotesk', Arial, sans-serif;
+  background: linear-gradient(135deg, #191924 0%, #23232b 100%);
+  color: #f5f6fa;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'Inter', Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+button, input, select, textarea {
+  font-family: 'Inter', 'Space Grotesk', Arial, sans-serif;
+}
+
+/* Accent colors */
+:root {
+  --accent-primary: #43D675;
+  --accent-secondary: #FFD700;
+  --accent-blue: #3498db;
+  --accent-purple: #a044ff;
+  --accent-dark: #23232b;
+  --accent-light: #f5f6fa;
+  --accent-gradient: linear-gradient(90deg, #43D675 0%, #FFD700 100%);
+}
+
+/* Node and sidebar backgrounds */
+.sleek-node {
+  background: #23232b;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(40,40,60,0.10);
+  border: 1.5px solid #353545;
+  transition: box-shadow 0.18s, border 0.18s;
+}
+.sleek-node.selected {
+  box-shadow: 0 0 0 3px var(--accent-primary);
+  border: 1.5px solid var(--accent-primary);
+}
+
+/* Sidebar */
+.sidebar {
+  background: rgba(35,35,43,0.95);
+  backdrop-filter: blur(8px);
+  border-right: 1.5px solid #333;
+}
+
+/* Buttons */
+button {
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+button:active {
+  box-shadow: 0 2px 8px rgba(67,214,117,0.12);
+}
+
+/* n8n-style theme using CSS variables */
+.react-flow {
+  /* Canvas background */
+  --xy-background-color: #181820;
+  
+  /* Node theming */
+  --xy-node-background-color-default: #ffffff;
+  --xy-node-border-default: 1.5px solid #e0e0e0;
+  --xy-node-border-color-selected: #a044ff;
+  --xy-node-box-shadow-selected: 0 4px 16px rgba(0,0,0,0.10);
+  --xy-node-color-default: #23232b;
+  
+  /* Edge theming - n8n style dashed purple */
+  --xy-edge-stroke-default: #a044ff;
+  --xy-edge-stroke-width-default: 2px;
+  --xy-edge-stroke-selected: #a044ff;
+  
+  /* Connection line theming */
+  --xy-connectionline-stroke-default: #a044ff;
+  --xy-connectionline-stroke-width-default: 2px;
+  
+  /* Controls theming */
+  --xy-controls-button-background-color-default: #23232b;
+  --xy-controls-button-background-color-hover-default: #353545;
+  --xy-controls-button-border-color-default: #444;
+  --xy-controls-button-color-default: #fff;
+}
+
+/* Custom node styles */
+.sleek-node {
+  min-width: 180px;
+  min-height: 64px;
+  max-width: 320px;
+  background: var(--xy-node-background-color-default);
+  border: var(--xy-node-border-default);
+  border-radius: 18px;
+  color: var(--xy-node-color-default);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  font-weight: 500;
+  position: relative;
+  padding: 0 24px;
+  gap: 16;
+  font-size: 16px;
+  transition: border 0.18s, box-shadow 0.18s;
+}
+.sleek-node.selected {
+  border-color: var(--xy-node-border-color-selected);
+  box-shadow: var(--xy-node-box-shadow-selected);
+}
+.sleek-node-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  font-size: 32px;
+}
+.sleek-node-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+.sleek-node-label {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.1;
+}
+.sleek-node-subtitle {
+  font-size: 13px;
+  color: #888;
+  margin-top: 2px;
+}
+.sleek-node-handles-bottom {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 10px;
+}
+.sleek-node-handle-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+}
+.sleek-node-handle-label {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+}
+
+/* Minimalist dot grid for canvas */
+.react-flow__background {
+  opacity: 0.12;
+}
+
+/* Toast notifications */
+.toast {
+  position: fixed;
+  top: 80px;
+  right: 32px;
+  background: #23232b;
+  color: #FFD700;
+  padding: 16px 28px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  z-index: 2000;
+  box-shadow: none;
+} 

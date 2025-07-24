@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "loginUser": "lawsa",
+  "loginPassword": "Lawsa##7017",
+  "executionArgs": {
+    "projectName": "n8n-frontend",
+    "projectPath": "d:/n8n(minimal)",
+    "testIds": [],
+    "additionalInstruction": "Run the full automated frontend test suite using the generated test plan.",
+    "envs": {
+      "API_KEY": "sk-user-gaCPBZd-6MLxNOiNL_Lzb9Z3EaN0CM_MiInN-Ifgcm4bnfwY7ZBYPkjngvtD3WKv4X7KXYHJsUE8t_9TxbbnWYtVjCruraIAWsMYJYxo0G5dp8izk-LLZQiTWFoslRqgsxk"
+    }
+  },
+  "proxy": "http://99ce5668-60e1-4934-981f-4c076cd4e517:myoevwRzGkN74hJeW4mwe2RkYlqJxnbQ@tun.testsprite.com:8080"
+}

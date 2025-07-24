@@ -1,0 +1,7 @@
+venv/
+node_modules/
+LAWSA-Automation.git/LAWSA-Automation/
+.DS_Store
+*.pyc
+__pycache__/
+.env 
