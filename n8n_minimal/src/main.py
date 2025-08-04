@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Header
 from fastapi import Request
 from .engine import execute_workflow
 import asyncio
+import time
 from .api_workflows import router as workflows_router
 from .api_executions import router as executions_router
 from .api_credentials import router as credentials_router
@@ -223,7 +224,26 @@ async def execute_agent(request: ExecutionRequest, user=Depends(get_current_user
     workflow = request.graph
     # --- Validation: Tool/LLM config ---
     from fastapi import HTTPException
-    from n8n_minimal.src.data.models import AVAILABLE_TOOLS, AVAILABLE_MODELS
+    # Define available tools and models locally since data.models doesn't exist
+    AVAILABLE_TOOLS = [
+        {
+            "name": "tavily_search",
+            "displayName": "Tavily Search",
+            "configFields": [
+                {"name": "api_key", "label": "API Key", "required": True},
+                {"name": "search_depth", "label": "Search Depth", "required": False}
+            ]
+        },
+        {
+            "name": "multiply",
+            "displayName": "Multiply",
+            "configFields": [
+                {"name": "a", "label": "Number A", "required": True},
+                {"name": "b", "label": "Number B", "required": True}
+            ]
+        }
+    ]
+    AVAILABLE_MODELS = ["gpt-4", "gpt-3.5-turbo", "claude-3"]
     for node in getattr(workflow, 'nodes', []):
         if getattr(node, 'type', None) == 'tool':
             tool_type = node.config.get('toolType') or node.config.get('type')
@@ -280,3 +300,62 @@ async def execute_agent(request: ExecutionRequest, user=Depends(get_current_user
                     "data": {"name": event["name"], "output": output}
                 })
     return EventSourceResponse(stream_generator()) 
+
+# Mock user storage for testing (remove in production)
+mock_users = {}
+
+@app.post("/auth/register")
+async def mock_register(req: dict):
+    email = req.get("email")
+    password = req.get("password")
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password required")
+    
+    if email in mock_users:
+        raise HTTPException(status_code=409, detail="Email already registered")
+    
+    mock_users[email] = {
+        "email": email,
+        "username": email,
+        "hashed_password": password,  # In production, hash this
+        "role": "user"
+    }
+    return {"success": True, "username": email, "email": email}
+
+@app.post("/auth/login")
+async def mock_login(req: dict):
+    email = req.get("email")
+    password = req.get("password")
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password required")
+    
+    user = mock_users.get(email)
+    if not user or user["hashed_password"] != password:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Create a simple token (in production, use proper JWT)
+    token = f"mock_token_{email}_{int(time.time())}"
+    return {"access_token": token, "token_type": "bearer"}
+
+@app.get("/auth/me")
+async def mock_me(token: str = Header(None)):
+    if not token or not token.startswith("mock_token_"):
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    # Extract email from token
+    parts = token.split("_")
+    if len(parts) < 3:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    email = parts[2]
+    user = mock_users.get(email)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return {
+        "username": user.get("username", ""),
+        "email": user.get("email", ""),
+        "name": user.get("name", ""),
+        "avatar": user.get("avatar", ""),
+        "status": user.get("status", "")
+    } 

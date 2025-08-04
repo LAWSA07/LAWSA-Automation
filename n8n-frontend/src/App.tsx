@@ -155,7 +155,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const token = localStorage.getItem('lawsa_token');
     if (!token) return;
-    fetch('http://localhost:8000/api/users/me', {
+    fetch('http://localhost:8000/auth/me', {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -179,12 +179,13 @@ const App: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showRegister, setShowRegister] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
     try {
-      const res = await fetch('http://localhost:8000/api/users/login', {
+      const res = await fetch('http://localhost:8000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -204,6 +205,28 @@ const App: React.FC = () => {
     } catch (err: any) {
       setLoginError('Login failed: ' + (err.message || 'Unknown error'));
       showToast('Login failed', 'error');
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    try {
+      const res = await fetch('http://localhost:8000/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email, 
+          password
+        })
+      });
+      if (!res.ok) throw new Error('Registration failed');
+      const data = await res.json();
+      showToast('Registration successful! Please login.', 'success');
+      setShowRegister(false); // Switch back to login
+    } catch (err: any) {
+      setLoginError('Registration failed: ' + (err.message || 'Unknown error'));
+      showToast('Registration failed', 'error');
     }
   };
 
@@ -269,7 +292,7 @@ const App: React.FC = () => {
             Welcome to LAWSA
           </motion.h2>
           <motion.form 
-            onSubmit={handleLogin} 
+            onSubmit={showRegister ? handleRegister : handleLogin} 
             style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -341,9 +364,36 @@ const App: React.FC = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              Login
+              {showRegister ? 'Register' : 'Login'}
             </motion.button>
           </motion.form>
+          
+          {/* Toggle between Login and Register */}
+          <motion.div 
+            style={{ 
+              textAlign: 'center', 
+              marginTop: '20px',
+              padding: '16px',
+              borderTop: '1px solid rgba(255,255,255,0.1)'
+            }}
+          >
+            <motion.button
+              type="button"
+              onClick={() => setShowRegister(!showRegister)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#FFD700',
+                cursor: 'pointer',
+                fontSize: '14px',
+                textDecoration: 'underline'
+              }}
+              whileHover={{ scale: 1.05 }}
+            >
+              {showRegister ? 'Already have an account? Login' : "Don't have an account? Register"}
+            </motion.button>
+          </motion.div>
+          
           {loginError && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
