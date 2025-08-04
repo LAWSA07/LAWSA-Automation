@@ -75,7 +75,7 @@ async def register(user: UserModel):
     user_dict["hashed_password"] = hashed_password
     result = await db.users.insert_one(user_dict)
     user_dict["_id"] = str(result.inserted_id)
-    return {"username": user.username, "email": user.email}
+    return {"username": user.username, "email": user.email, "name": user.name}
 
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -83,4 +83,14 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     access_token = create_access_token({"sub": user["username"]})
-    return {"access_token": access_token, "token_type": "bearer"} 
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me")
+async def get_me(user=Depends(get_current_user)):
+    return {
+        "name": user.get("name", ""),
+        "username": user.get("username", ""),
+        "email": user.get("email", ""),
+        "avatar": user.get("avatar", ""),
+        "status": user.get("status", "TRIAL")
+    } 

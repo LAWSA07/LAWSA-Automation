@@ -45,31 +45,13 @@ async def run_test():
                 pass
         
         # Interact with the page elements to simulate user flow
-        # Try to navigate directly to a common login URL or search for login link
-        await page.goto('http://localhost:5173/login', timeout=10000)
+        # Navigate to the login page.
+        frame = context.pages[-1]
+        elem = frame.locator('xpath=html/body/div/div/div[2]/aside/div/button').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
 
-        # Search for any login form or input fields by scrolling or extracting content
-        await page.mouse.wheel(0, window.innerHeight)
-        
-
-        # Try to find alternative login URLs or check if login is handled differently, possibly via API or another interface
-        await page.goto('http://localhost:5173/auth/login', timeout=10000)
-        
-
-        # Return to the application base URL and try to find any login-related elements or API endpoints manually.
-        await page.goto('http://localhost:5173', timeout=10000)
-        
-
-        # Try to find any API endpoints or documentation that might indicate how to perform login or if login is required
-        await page.goto('http://localhost:5173/api/login', timeout=10000)
-        
-
-        # Attempt to perform a direct API POST request to the login endpoint with the provided credentials to verify if a JWT token is returned.
-        await page.goto('http://localhost:5173/api/login', timeout=10000)
-        
-
-        assert False, 'Test failed: Unable to verify successful login and JWT token retrieval.'
+        assert False, 'Test failed: Expected result unknown, forcing failure.'
         await asyncio.sleep(5)
     
     finally:

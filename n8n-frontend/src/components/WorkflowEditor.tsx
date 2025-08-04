@@ -45,6 +45,10 @@ import toast from 'react-hot-toast';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import confetti from 'canvas-confetti';
+import { BackgroundBeams } from "./ui/background-beams";
+import { DotPattern } from "./ui/dot-pattern";
+import { cn } from "../utils/utils";
+import { v4 as uuidv4 } from 'uuid';
 
 const nodeTypesList = [
   { type: 'input', label: 'Input' },
@@ -57,144 +61,18 @@ const nodeTypesList = [
 let id = 0;
 const getId = (): string => `node_${id++}`;
 
-interface SidebarProps {
+// Replace SidebarProps with WorkflowEditorProps and use forwardRef
+interface WorkflowEditorProps {
   onDragStart: (event: React.DragEvent, nodeType: string) => void;
+  workflowName: string;
+  setWorkflowName: (name: string) => void;
 }
 
-const nodeTypeIcons: Record<string, string> = {
-  input: '🟢',
-  agentic: '🤖',
-  memory: '🧠',
-  tool: '🛠️',
-  output: '🔵',
-};
-const nodeTypeColors: Record<string, string> = {
-  input: '#43D675',
-  agentic: '#a044ff',
-  memory: '#FFD700',
-  tool: '#3498db',
-  output: '#FF9800',
-};
-const Sidebar: React.FC<SidebarProps> = ({ onDragStart }) => {
-  return (
-    <aside className="sidebar" style={{ 
-      width: 170, 
-      padding: 20, 
-      height: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center',
-      boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
-      zIndex: 30
-    }}>
-      <div style={{ 
-        fontWeight: 700, 
-        fontSize: 20, 
-        marginBottom: 18, 
-        letterSpacing: 1, 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 8 
-      }}>
-        <span style={{ fontSize: 22 }}>⚡</span> <span>Workflow</span>
-      </div>
-      <div style={{ 
-        width: '100%', 
-        fontWeight: 600, 
-        marginBottom: 12, 
-        fontSize: 15, 
-        color: '#aaa', 
-        letterSpacing: 0.5 
-      }}>
-        Nodes
-      </div>
-      {nodeTypesList.map((node) => (
-        <div
-          key={node.type}
-          title={`Drag to add a ${node.label} node`}
-          style={{
-            padding: '12px 10px',
-            marginBottom: 12,
-            background: '#282834cc',
-            borderRadius: 10,
-            cursor: 'grab',
-            userSelect: 'none',
-            textAlign: 'center',
-            fontWeight: 500,
-            fontSize: 16,
-            border: '1.5px solid #23232b',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            transition: 'background 0.18s, color 0.18s, box-shadow 0.18s',
-            boxShadow: '0 2px 8px rgba(40,40,60,0.08)',
-          }}
-          draggable
-          onDragStart={(e) => onDragStart(e, node.type)}
-          onMouseOver={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.background = '#353545ee')}
-          onMouseOut={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.background = '#282834cc')}
-        >
-          <span style={{
-            background: nodeTypeColors[node.type],
-            color: '#fff',
-            borderRadius: '50%',
-            width: 32,
-            height: 32,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 18,
-            fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-            marginRight: 8
-          }}>{nodeTypeIcons[node.type]}</span>
-          {node.label}
-        </div>
-      ))}
-    </aside>
-  );
-};
-
-// n8n-style connection logic
-function n8nIsValidConnection(
-  connection: Connection, 
-  nodes: Node<SleekNodeData>[], 
-  edges: Edge[]
-): boolean {
-  const sourceNode = nodes.find(n => n.id === connection.source);
-  const targetNode = nodes.find(n => n.id === connection.target);
-  
-  if (!sourceNode || !targetNode) return false;
-  if (connection.source === connection.target) return false;
-  
-  // Input: can only be source, not target
-  if (targetNode.type === 'input') return false;
-  // Output: can only be target, not source
-  if (sourceNode.type === 'output') return false;
-  // No input-to-input
-  if (sourceNode.type === 'input' && targetNode.type === 'input') return false;
-  // No output as source
-  if (sourceNode.type === 'output') return false;
-  
-  // No cycles
-  const visited = new Set<string>();
-  function dfs(nodeId: string): boolean {
-    if (nodeId === connection.source) return true;
-    for (const e of edges) {
-      if (e.source === nodeId && !visited.has(e.target)) {
-        visited.add(e.target);
-        if (dfs(e.target)) return true;
-      }
-    }
-    return false;
-  }
-  if (connection.target && dfs(connection.target)) return false;
-  
+function n8nIsValidConnection(connection: any, nodes?: any, edges?: any) {
   return true;
 }
 
-// Memoize nodeTypes and edgeTypes to avoid React Flow warning
-const WorkflowEditor: React.FC = () => {
+const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(({ onDragStart, workflowName, setWorkflowName }, ref) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<Node<SleekNodeData>[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -230,11 +108,18 @@ const WorkflowEditor: React.FC = () => {
   const [executionOutput, setExecutionOutput] = useState<string>('');
   const [showCredentials, setShowCredentials] = useState(false);
   const [credentials, setCredentials] = useState([]);
-  const [newCred, setNewCred] = useState({ name: '', type: '', data: '' });
-  const [workflowName, setWorkflowName] = useState('Untitled Workflow');
+  const [newCred, setNewCred] = useState({ name: '', connection_string: '' });
+  // Remove local workflowName state
+  // const [workflowName, setWorkflowName] = useState('Untitled Workflow');
   const [typewriterOutput, setTypewriterOutput] = useState('');
   const typewriterTimeout = useRef<NodeJS.Timeout | null>(null);
   const [recentlyAddedNodeIds, setRecentlyAddedNodeIds] = useState<string[]>([]);
+  // Add state for saved workflows
+  const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
+  const [loadingWorkflows, setLoadingWorkflows] = useState(false);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
+  // Add validation state
+  const [configError, setConfigError] = useState<string | null>(null);
 
   // 1. Move onHandleContextMenu above nodeTypes
   const onHandleContextMenu = useCallback((event: React.MouseEvent, nodeId: string, handleId: string) => {
@@ -244,11 +129,11 @@ const WorkflowEditor: React.FC = () => {
 
   // Move nodeTypes and edgeTypes outside the WorkflowEditor component to fix React Flow memoization issues
   const nodeTypes = {
-    input: (props) => <CustomNode {...props} className={recentlyAddedNodeIds.includes(props.id) ? 'sleek-node node-animate' : 'sleek-node'} isValidConnection={n8nIsValidConnection} />, 
-    agentic: (props) => <AgentNode {...props} className={recentlyAddedNodeIds.includes(props.id) ? 'sleek-node node-animate' : 'sleek-node'} onHandleContextMenu={() => {}} />, 
-    memory: (props) => <CustomNode {...props} className={recentlyAddedNodeIds.includes(props.id) ? 'sleek-node node-animate' : 'sleek-node'} isValidConnection={n8nIsValidConnection} />, 
-    tool: (props) => <CustomNode {...props} className={recentlyAddedNodeIds.includes(props.id) ? 'sleek-node node-animate' : 'sleek-node'} isValidConnection={n8nIsValidConnection} />, 
-    output: (props) => <CustomNode {...props} className={recentlyAddedNodeIds.includes(props.id) ? 'sleek-node node-animate' : 'sleek-node'} isValidConnection={n8nIsValidConnection} />, 
+    input: (props: any) => <CustomNode {...props} className={'sleek-node'} isValidConnection={n8nIsValidConnection} />, 
+    agentic: (props: any) => <AgentNode {...props} className={'sleek-node'} onHandleContextMenu={() => {}} />, 
+    memory: (props: any) => <CustomNode {...props} className={'sleek-node'} isValidConnection={n8nIsValidConnection} />, 
+    tool: (props: any) => <CustomNode {...props} className={'sleek-node'} isValidConnection={n8nIsValidConnection} />, 
+    output: (props: any) => <CustomNode {...props} className={'sleek-node'} isValidConnection={n8nIsValidConnection} />, 
   };
   const edgeTypes = {
     custom: CustomEdge,
@@ -322,11 +207,12 @@ const WorkflowEditor: React.FC = () => {
   // Export config as JSON and download
   const handleExportConfig = () => {
     const config: WorkflowConfig = {
-      nodes: nodes.map(({ id, type, data, position }) => ({ 
-        id, 
-        type: type || 'default', 
-        label: data.label, 
-        position 
+      nodes: nodes.map(({ id, type, data, position, ...rest }) => ({
+        id,
+        type,
+        position,
+        config: data?.config || {},
+        ...rest
       })),
       edges: edges.map(({ id, source, target }) => ({ id, source, target })),
     };
@@ -342,6 +228,7 @@ const WorkflowEditor: React.FC = () => {
 
   // Node click handler
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node<SleekNodeData>) => {
+    console.log('Node clicked:', node.id, node.data.label);
     setSelectedNodeId(node.id);
     setModalLabel(node.data.label || '');
     setModalConfig(node.data.config || {});
@@ -396,7 +283,9 @@ const WorkflowEditor: React.FC = () => {
             position: { x: agentPos.x, y: agentPos.y + 180 },
             data: {
               label: `${modalConfig.memoryConfig.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Memory`,
-              config: { memoryConfig: modalConfig.memoryConfig },
+              config: {
+                memoryConfig: modalConfig.memoryConfig
+              },
             },
           });
         }
@@ -415,7 +304,11 @@ const WorkflowEditor: React.FC = () => {
             position: { x: agentPos.x + 120, y: agentPos.y + 180 },
             data: {
               label: `${modalConfig.toolConfig.type.charAt(0).toUpperCase() + modalConfig.toolConfig.type.slice(1)} Tool`,
-              config: { toolType: modalConfig.toolConfig.type, ...modalConfig.toolConfig.config },
+              config: {
+                toolType: modalConfig.toolConfig.type,
+                tool_name: modalConfig.toolConfig.type,
+                ...modalConfig.toolConfig.config
+              },
             },
           });
         }
@@ -480,9 +373,13 @@ const WorkflowEditor: React.FC = () => {
   const handleCloseModal = () => setSelectedNodeId(null);
 
   // Track selection
-  const onSelectionChange = useCallback(({ nodes: selNodes, edges: selEdges }: { nodes: Node[], edges: Edge[] }) => {
-    setSelectedNodes(selNodes.map(n => n.id));
-    setSelectedEdges(selEdges.map(e => e.id));
+  const onSelectionChange = useCallback((elements: any) => {
+    if (elements && elements.nodes && elements.nodes.length > 0) {
+      // Keep the config panel open for the selected node
+      setSelectedNodeId(elements.nodes[0].id);
+    } else {
+      setSelectedNodeId(null);
+    }
   }, []);
 
   // Keyboard delete handler
@@ -658,8 +555,8 @@ const WorkflowEditor: React.FC = () => {
   }, [showCredentials]);
   const handleAddCredential = async () => {
     try {
-      await API.createCredential(newCred.name, newCred.type, newCred.data);
-      setNewCred({ name: '', type: '', data: '' });
+      await API.createCredential(newCred.name, newCred.connection_string);
+      setNewCred({ name: '', connection_string: '' });
       const creds = await API.listCredentials();
       setCredentials(creds);
       toast.success('Credential added!');
@@ -678,16 +575,16 @@ const WorkflowEditor: React.FC = () => {
     }
   };
   const [editingCred, setEditingCred] = useState(null);
-  const [editCredData, setEditCredData] = useState({ name: '', type: '', data: '' });
+  const [editCredData, setEditCredData] = useState({ name: '', connection_string: '' });
   const handleEditCredential = (cred) => {
     setEditingCred(cred._id);
-    setEditCredData({ name: cred.name, type: cred.type || '', data: cred.data || '' });
+    setEditCredData({ name: cred.name, connection_string: cred.data || '' });
   };
   const handleSaveEditCredential = async () => {
     try {
-      await API.createCredential(editCredData.name, editCredData.type, editCredData.data); // Replace with update API if available
+      await API.createCredential(editCredData.name, editCredData.connection_string); // Replace with update API if available
       setEditingCred(null);
-      setEditCredData({ name: '', type: '', data: '' });
+      setEditCredData({ name: '', connection_string: '' });
       setCredentials(await API.listCredentials());
       toast.success('Credential updated!');
     } catch (err) {
@@ -696,16 +593,46 @@ const WorkflowEditor: React.FC = () => {
   };
 
   const handleRunWorkflow = async () => {
-    // Build workflow JSON from nodes/edges (simplified for demo)
-    const workflow = { nodes, edges };
+    // Validate tool nodes
+    for (const node of nodes) {
+      if (node.type === 'tool') {
+        const tool = AVAILABLE_TOOLS.find(t => t.name === (node.data.config?.toolType || node.data.toolType));
+        if (tool) {
+          for (const field of tool.configFields) {
+            if (field.required && !node.data.config?.[field.name]) {
+              setConfigError(`Tool node "${tool.displayName}" is missing required field: ${field.label}`);
+              return;
+            }
+          }
+        }
+      }
+    }
+    setConfigError(null);
+    const token = localStorage.getItem('lawsa_token');
+    if (!token) { toast.error('Not authenticated'); return; }
+    // Build workflow JSON from nodes/edges, always include config
+    const workflow = {
+      nodes: nodes.map(n => ({
+        ...n,
+        config: n.data?.config || {},
+      })),
+      edges,
+      name: workflowName
+    };
     setExecutionOutput('Running...');
     setTypewriterOutput('');
     try {
       const res = await fetch('http://localhost:8000/execute-agent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workflow),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ graph: workflow, input: '', thread_id: uuidv4() }),
       });
+      if (!res.ok) {
+        const errText = await res.text();
+        setExecutionOutput('Error: ' + errText);
+        toast.error('Workflow execution failed: ' + errText);
+        return;
+      }
       if (!res.body) { setExecutionOutput('No streaming output.'); toast.error('No streaming output.'); return; }
       const reader = res.body.getReader();
       let result = '';
@@ -713,17 +640,7 @@ const WorkflowEditor: React.FC = () => {
         const { done, value } = await reader.read();
         if (done) break;
         result += new TextDecoder().decode(value);
-        // Typewriter effect: animate output
-        if (typewriterTimeout.current) clearTimeout(typewriterTimeout.current);
-        let i = 0;
-        const animate = () => {
-          setTypewriterOutput(result.slice(0, i));
-          if (i < result.length) {
-            typewriterTimeout.current = setTimeout(animate, 8);
-            i++;
-          }
-        };
-        animate();
+        setTypewriterOutput(result);
       }
       setExecutionOutput(result);
       toast.success('Workflow executed successfully!');
@@ -741,89 +658,78 @@ const WorkflowEditor: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [recentlyAddedNodeIds]);
 
+  // Save workflow to backend
+  const handleSaveWorkflow = async () => {
+    const token = localStorage.getItem('lawsa_token');
+    if (!token) { toast.error('Not authenticated'); return; }
+    const workflow = { nodes, edges, name: workflowName };
+    try {
+      const res = await fetch('http://localhost:8000/api/workflows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(workflow),
+      });
+      if (!res.ok) throw new Error('Failed to save workflow');
+      toast.success('Workflow saved!');
+    } catch (err) {
+      toast.error('Failed to save workflow: ' + err);
+    }
+  };
+
+  // Load workflows from backend
+  const handleLoadWorkflows = async () => {
+    setLoadingWorkflows(true);
+    const token = localStorage.getItem('lawsa_token');
+    if (!token) { toast.error('Not authenticated'); setLoadingWorkflows(false); return; }
+    try {
+      const res = await fetch('http://localhost:8000/api/workflows', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch workflows');
+      const data = await res.json();
+      setSavedWorkflows(data);
+    } catch (err) {
+      toast.error('Failed to load workflows: ' + err);
+    }
+    setLoadingWorkflows(false);
+  };
+
+  // Load selected workflow into editor
+  const handleSelectWorkflow = async (workflowId: string) => {
+    const token = localStorage.getItem('lawsa_token');
+    if (!token) { toast.error('Not authenticated'); return; }
+    try {
+      const res = await fetch(`http://localhost:8000/api/workflows/${workflowId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to load workflow');
+      const data = await res.json();
+      setNodes(data.nodes || []);
+      setEdges(data.edges || []);
+      setWorkflowName(data.name || 'Untitled Workflow');
+      setSelectedWorkflowId(workflowId);
+      toast.success('Workflow loaded!');
+    } catch (err) {
+      toast.error('Failed to load workflow: ' + err);
+    }
+  };
+
+  React.useImperativeHandle(ref, () => ({
+    handleExportConfig,
+    handleRunWorkflow,
+    setShowCredentials,
+  }));
+
   return (
     <>
-      <div className="topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 800, fontSize: 22, letterSpacing: 1, color: 'var(--accent-primary)' }}>
-          <span style={{ fontSize: 28 }}>⚡</span> lawsa
+      {/* REMOVE the topbar section here, only keep the main-canvas and related content */}
+      <div className="main-canvas" style={{ position: 'relative', overflow: 'hidden', paddingBottom: 120 }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' }}>
+          <DotPattern />
         </div>
-        <input
-          value={workflowName}
-          onChange={e => setWorkflowName(e.target.value)}
-          style={{
-            marginLeft: 32,
-            fontSize: 18,
-            fontWeight: 700,
-            background: 'rgba(24,24,32,0.85)',
-            color: '#fff',
-            border: '1.5px solid #353545',
-            borderRadius: 8,
-            padding: '8px 18px',
-            minWidth: 220,
-            outline: 'none',
-            boxShadow: '0 2px 8px rgba(40,40,60,0.08)'
-          }}
-        />
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
-          <button
-            onClick={handleExportConfig}
-            title="Export the current workflow as a JSON config file"
-            style={{
-              background: 'linear-gradient(90deg, #a044ff 0%, #6a3093 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 22px',
-              fontWeight: 700,
-              fontSize: 16,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(160,68,255,0.10)'
-            }}
-          >
-            Export
-          </button>
-          <button
-            onClick={handleRunWorkflow}
-            title="Run the current workflow"
-            style={{
-              background: 'linear-gradient(90deg, #FFD700 0%, #FF9800 100%)',
-              color: '#23232b',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 22px',
-              fontWeight: 700,
-              fontSize: 16,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(255,215,0,0.10)'
-            }}
-          >
-            Run
-          </button>
-          <button
-            onClick={() => setShowCredentials(true)}
-            title="Manage credentials"
-            style={{
-              background: 'linear-gradient(90deg, #FFD700 0%, #43D675 100%)',
-              color: '#23232b',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 22px',
-              fontWeight: 700,
-              fontSize: 16,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(67,214,117,0.10)'
-            }}
-          >
-            Credentials
-          </button>
-        </div>
-      </div>
-      <div className="sidebar">
-        <Sidebar onDragStart={handleDragStart} />
-      </div>
-      <div className="main-canvas">
-        <div style={{ height: '100%', width: '100%' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
           <ReactFlow
+            style={{ height: '100%', width: '100%', minHeight: 0, minWidth: 0 }}
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChangeWithHistory}
@@ -852,8 +758,9 @@ const WorkflowEditor: React.FC = () => {
               maskColor="rgba(40,40,60,0.12)" 
               title="Workflow Minimap: Drag or click to navigate" 
             />
-            <Background variant={BackgroundVariant.Dots} gap={20} size={2} color="#3a3a4a" />
+            <Background variant={BackgroundVariant.Dots} gap={20} size={2} color="#23232b" />
           </ReactFlow>
+          {/* Edge label input, context menu, and node config panel remain unchanged */}
           
           {/* Edge label input */}
           {editingEdge && (
@@ -1113,7 +1020,7 @@ const WorkflowEditor: React.FC = () => {
                             value={model.model || ''}
                             onChange={e => setModalConfig(cfg => {
                               const models = [...(cfg.models || [])];
-                              models[idx] = { ...models[idx], model: e.target.value };
+                              models[idx] = { ...models[idx], model: e.target.value, model_name: e.target.value };
                               return { ...cfg, models };
                             })}
                             style={{ width: '100%', padding: '6px 10px', borderRadius: 4, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 14, marginBottom: 8 }}
@@ -1266,34 +1173,34 @@ const WorkflowEditor: React.FC = () => {
                   <label style={{ fontSize: 14, marginBottom: 4 }}>Tool Type</label>
                   <select
                     value={modalConfig.toolType || ''}
-                    onChange={e => setModalConfig(cfg => ({ ...cfg, toolType: e.target.value }))}
+                    onChange={e => setModalConfig(cfg => ({ ...cfg, toolType: e.target.value, config: {} }))}
                     style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 15, marginBottom: 8 }}
                   >
                     <option value="">Select Tool</option>
-                    <option value="tavily">Tavily Web Search</option>
+                    {AVAILABLE_TOOLS.map(tool => (
+                      <option key={tool.name} value={tool.name}>{tool.displayName}</option>
+                    ))}
                   </select>
-                  
-                  {modalConfig.toolType === 'tavily' && (
+                  {modalConfig.toolType && (
                     <>
-                      <label style={{ fontSize: 14, marginBottom: 4 }}>Tavily API Key</label>
-                      <input
-                        value={modalConfig.apiKey || ''}
-                        onChange={e => setModalConfig(cfg => ({ ...cfg, apiKey: e.target.value }))}
-                        placeholder="Your Tavily API Key"
-                        type="password"
-                        style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 15, marginBottom: 8 }}
-                      />
-                      <label style={{ fontSize: 14, marginBottom: 4 }}>Search Depth</label>
-                      <select
-                        value={modalConfig.searchDepth || 'basic'}
-                        onChange={e => setModalConfig(cfg => ({ ...cfg, searchDepth: e.target.value }))}
-                        style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 15, marginBottom: 8 }}
-                      >
-                        <option value="basic">Basic</option>
-                        <option value="advanced">Advanced</option>
-                      </select>
+                      {AVAILABLE_TOOLS.find(t => t.name === modalConfig.toolType)?.configFields.map(field => (
+                        <div key={field.name} style={{ marginBottom: 8 }}>
+                          <label style={{ fontSize: 12, marginBottom: 2, display: 'block' }}>{field.label}{field.required && ' *'}</label>
+                          <input
+                            type={field.type === 'number' ? 'number' : 'text'}
+                            value={modalConfig.config?.[field.name] || ''}
+                            onChange={e => setModalConfig(cfg => ({
+                              ...cfg,
+                              config: { ...cfg.config, [field.name]: e.target.value }
+                            }))}
+                            placeholder={field.default?.toString()}
+                            style={{ width: '100%', padding: '6px 10px', borderRadius: 4, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 14 }}
+                          />
+                        </div>
+                      ))}
                     </>
                   )}
+                  {configError && <div style={{ color: 'red', marginTop: 8 }}>{configError}</div>}
                 </>
               )}
               
@@ -1349,14 +1256,38 @@ const WorkflowEditor: React.FC = () => {
         </div>
       </div>
       {/* Streaming output display */}
-      <div style={{ position: 'fixed', bottom: 24, left: 24, background: '#23232b', color: '#FFD700', padding: 16, borderRadius: 8, minWidth: 320, maxWidth: 600, zIndex: 1000, fontFamily: 'monospace', fontSize: 15 }}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>Execution Output:</div>
-        {executionOutput === 'Running...' ? (
-          <Skeleton count={4} height={18} style={{ marginBottom: 8 }} />
-        ) : (
-          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>{typewriterOutput || executionOutput}</pre>
-        )}
-      </div>
+      {executionOutput && (
+        <div style={{
+          position: 'fixed',
+          bottom: 32,
+          left: 32,
+          background: 'rgba(35,35,43,0.92)',
+          color: '#FFD700',
+          padding: 20,
+          borderRadius: 14,
+          minWidth: 320,
+          maxWidth: 600,
+          zIndex: 1000,
+          fontFamily: 'monospace',
+          fontSize: 15,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          backdropFilter: 'blur(8px)',
+          border: '1.5px solid #FFD700',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, marginBottom: 6 }}>
+            <span>Execution Output</span>
+            <button onClick={() => setExecutionOutput('')} style={{ background: 'none', border: 'none', color: '#FFD700', fontSize: 20, cursor: 'pointer', fontWeight: 700, marginLeft: 12, lineHeight: 1 }}>×</button>
+          </div>
+          {executionOutput === 'Running...' ? (
+            <Skeleton count={4} height={18} style={{ marginBottom: 8 }} />
+          ) : (
+            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: '#fff', fontSize: 15 }}>{typewriterOutput || executionOutput}</pre>
+          )}
+        </div>
+      )}
       {showCredentials && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.35)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#23232b', padding: 32, borderRadius: 10, minWidth: 340, maxWidth: 420, maxHeight: '80vh', boxShadow: '0 4px 24px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: 18, overflowY: 'auto' }}>
@@ -1380,13 +1311,9 @@ const WorkflowEditor: React.FC = () => {
                             style={{ marginRight: 6, padding: '4px 8px', borderRadius: 4, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 14 }}
                           />
                           <input
-                            value={editCredData.type}
-                            onChange={e => setEditCredData(d => ({ ...d, type: e.target.value }))}
-                            style={{ marginRight: 6, padding: '4px 8px', borderRadius: 4, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 14 }}
-                          />
-                          <input
-                            value={editCredData.data}
-                            onChange={e => setEditCredData(d => ({ ...d, data: e.target.value }))}
+                            value={editCredData.connection_string}
+                            onChange={e => setEditCredData(d => ({ ...d, connection_string: e.target.value }))}
+                            placeholder="Connection String"
                             style={{ marginRight: 6, padding: '4px 8px', borderRadius: 4, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 14 }}
                           />
                           <button onClick={handleSaveEditCredential} style={{ background: '#43D675', color: '#181820', border: 'none', borderRadius: 4, padding: '4px 10px', fontWeight: 600, fontSize: 14, cursor: 'pointer', marginRight: 4 }}>Save</button>
@@ -1413,15 +1340,9 @@ const WorkflowEditor: React.FC = () => {
                 style={{ marginRight: 8, padding: '6px 10px', borderRadius: 4, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 15 }}
               />
               <input
-                placeholder="Type"
-                value={newCred.type}
-                onChange={e => setNewCred(c => ({ ...c, type: e.target.value }))}
-                style={{ marginRight: 8, padding: '6px 10px', borderRadius: 4, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 15 }}
-              />
-              <input
-                placeholder="Data (e.g. API key, conn string)"
-                value={newCred.data}
-                onChange={e => setNewCred(c => ({ ...c, data: e.target.value }))}
+                placeholder="Connection String"
+                value={newCred.connection_string}
+                onChange={e => setNewCred(c => ({ ...c, connection_string: e.target.value }))}
                 style={{ marginRight: 8, padding: '6px 10px', borderRadius: 4, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 15 }}
               />
               <button onClick={handleAddCredential} style={{ background: '#43D675', color: '#181820', border: 'none', borderRadius: 6, padding: '6px 14px', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Add</button>
@@ -1435,8 +1356,22 @@ const WorkflowEditor: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Add Save/Load buttons to the UI (above or below ReactFlow) */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+        <button onClick={handleSaveWorkflow} style={{ background: '#43D675', color: '#181820', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Save Workflow</button>
+        <button onClick={handleLoadWorkflows} style={{ background: '#FFD700', color: '#23232b', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Load Workflow</button>
+        {loadingWorkflows && <span style={{ color: '#FFD700' }}>Loading...</span>}
+        {savedWorkflows.length > 0 && (
+          <select value={selectedWorkflowId || ''} onChange={e => handleSelectWorkflow(e.target.value)} style={{ marginLeft: 8, padding: '8px 12px', borderRadius: 6, border: '1px solid #444', background: '#181820', color: '#fff', fontSize: 15 }}>
+            <option value="">Select Workflow</option>
+            {savedWorkflows.map(wf => (
+              <option key={wf._id} value={wf._id}>{wf.name || wf._id}</option>
+            ))}
+          </select>
+        )}
+      </div>
     </>
   );
-};
+});
 
 export default WorkflowEditor; 

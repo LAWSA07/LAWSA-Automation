@@ -1,0 +1,42 @@
+[
+  {
+    "id": "TC001",
+    "title": "post execute agent streams results",
+    "description": "Test the /execute-agent POST endpoint to verify it correctly streams agentic workflow execution results as Server-Sent Events in real-time based on the provided workflow definition."
+  },
+  {
+    "id": "TC002",
+    "title": "get credentials retrieves encrypted list",
+    "description": "Test the /api/credentials GET endpoint to ensure it returns a list of encrypted credentials for the authenticated user."
+  },
+  {
+    "id": "TC003",
+    "title": "post credentials adds or updates with validation",
+    "description": "Test the /api/credentials POST endpoint to verify it correctly adds or updates credentials with proper validation and encryption, returning success or validation error messages."
+  },
+  {
+    "id": "TC004",
+    "title": "delete credential by id removes credential",
+    "description": "Test the /api/credentials/{credentialId} DELETE endpoint to confirm it deletes the specified credential by ID and returns a 204 status code."
+  },
+  {
+    "id": "TC005",
+    "title": "get tools returns tool configurations",
+    "description": "Test the /api/tools GET endpoint to verify it returns a list of available tools with their configurations such as tavily_search, multiply, send_email, and post_to_slack."
+  },
+  {
+    "id": "TC006",
+    "title": "post workflows submits new or updated workflow",
+    "description": "Test the /api/workflows POST endpoint to ensure it accepts new or updated workflow JSON configurations and returns appropriate success or error messages."
+  },
+  {
+    "id": "TC007",
+    "title": "post users login returns jwt token",
+    "description": "Test the /api/users/login POST endpoint to verify user authentication with username and password, returning a JWT token on successful login."
+  },
+  {
+    "id": "TC008",
+    "title": "post users logout invalidates jwt token",
+    "description": "Test the /api/users/logout POST endpoint to confirm it invalidates the JWT token and returns a success message on logout."
+  }
+]

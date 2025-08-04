@@ -53,3 +53,102 @@ Non-technical users and automation engineers need a way to build, test, and depl
 ---
 
 *This document serves as the foundation for development, testing, and deployment of the no-code agentic automation platform.* 
+
+# Backend API Detailed Specification
+
+## TC001: POST /execute-agent - Stream Agentic Workflow Results
+- **Endpoint:** /execute-agent
+- **Method:** POST
+- **Description:** Streams agentic workflow execution results as Server-Sent Events in real-time based on the provided workflow definition.
+- **Expected Behavior:**
+  - Accepts a valid workflow definition in the request body.
+  - Executes the workflow using LangGraph/LangChain.
+  - Streams output tokens/events to the client as SSE.
+  - Returns errors in SSE stream if execution fails.
+- **Authentication:** Required (JWT Bearer)
+- **Validation:** Workflow definition must be valid JSON and conform to schema.
+- **Error Handling:** Returns 400 for invalid input, 401 for unauthorized, 500 for execution errors.
+- **Security:** Only authenticated users can execute workflows. Input is sanitized.
+
+## TC002: GET /api/credentials - Retrieve Encrypted Credentials
+- **Endpoint:** /api/credentials
+- **Method:** GET
+- **Description:** Returns a list of encrypted credentials for the authenticated user.
+- **Expected Behavior:**
+  - Returns all credentials belonging to the user, with sensitive fields encrypted.
+- **Authentication:** Required (JWT Bearer)
+- **Validation:** N/A
+- **Error Handling:** 401 for unauthorized, 500 for server errors.
+- **Security:** Only the user's own credentials are returned. No plaintext secrets.
+
+## TC003: POST /api/credentials - Add/Update Credential
+- **Endpoint:** /api/credentials
+- **Method:** POST
+- **Description:** Adds or updates a credential with validation and encryption.
+- **Expected Behavior:**
+  - Validates credential fields (name, type, data).
+  - Encrypts sensitive data before storing.
+  - Returns success or validation error message.
+- **Authentication:** Required (JWT Bearer)
+- **Validation:** All required fields must be present and valid.
+- **Error Handling:** 400 for validation errors, 401 for unauthorized, 500 for server errors.
+- **Security:** No secrets stored in plaintext. Only owner can update.
+
+## TC004: DELETE /api/credentials/{credentialId} - Remove Credential
+- **Endpoint:** /api/credentials/{credentialId}
+- **Method:** DELETE
+- **Description:** Deletes the specified credential by ID.
+- **Expected Behavior:**
+  - Removes the credential if it exists and belongs to the user.
+  - Returns 204 No Content on success.
+- **Authentication:** Required (JWT Bearer)
+- **Validation:** CredentialId must be valid and owned by user.
+- **Error Handling:** 404 if not found, 401 for unauthorized, 500 for server errors.
+- **Security:** Only owner can delete. No data leakage.
+
+## TC005: GET /api/tools - List Tool Configurations
+- **Endpoint:** /api/tools
+- **Method:** GET
+- **Description:** Returns a list of available tools and their configurations (e.g., tavily_search, multiply, send_email, post_to_slack).
+- **Expected Behavior:**
+  - Returns all supported tool types and their config schemas.
+- **Authentication:** Required (JWT Bearer)
+- **Validation:** N/A
+- **Error Handling:** 401 for unauthorized, 500 for server errors.
+- **Security:** No sensitive data returned.
+
+## TC006: POST /api/workflows - Submit Workflow
+- **Endpoint:** /api/workflows
+- **Method:** POST
+- **Description:** Accepts new or updated workflow JSON configurations.
+- **Expected Behavior:**
+  - Validates and stores the workflow for the user.
+  - Returns success or error message.
+- **Authentication:** Required (JWT Bearer)
+- **Validation:** Workflow JSON must conform to schema.
+- **Error Handling:** 400 for invalid input, 401 for unauthorized, 500 for server errors.
+- **Security:** Only owner can create/update their workflows.
+
+## TC007: POST /api/users/login - User Login
+- **Endpoint:** /api/users/login
+- **Method:** POST
+- **Description:** Authenticates user with username and password, returns JWT token on success.
+- **Expected Behavior:**
+  - Validates credentials.
+  - Returns JWT token if valid, error if not.
+- **Authentication:** N/A (login endpoint)
+- **Validation:** Username and password required.
+- **Error Handling:** 400 for missing fields, 401 for invalid credentials.
+- **Security:** Rate limiting, no sensitive info in error messages.
+
+## TC008: POST /api/users/logout - User Logout
+- **Endpoint:** /api/users/logout
+- **Method:** POST
+- **Description:** Invalidates the JWT token and logs out the user.
+- **Expected Behavior:**
+  - Invalidates the user's session/token.
+  - Returns success message.
+- **Authentication:** Required (JWT Bearer)
+- **Validation:** N/A
+- **Error Handling:** 401 for unauthorized, 500 for server errors.
+- **Security:** Token is blacklisted or expired. 

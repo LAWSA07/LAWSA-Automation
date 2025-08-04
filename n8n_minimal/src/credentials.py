@@ -4,8 +4,10 @@ import os
 from .security import encrypt_data, decrypt_data
 import uuid
 
-FERNET_KEY = os.environ.get("FERNET_KEY") or Fernet.generate_key()
-fernet = Fernet(FERNET_KEY)
+FERNET_KEY = os.environ.get("FERNET_KEY")
+if not FERNET_KEY:
+    raise RuntimeError("FERNET_KEY environment variable must be set for credential encryption.")
+fernet = Fernet(FERNET_KEY.encode() if isinstance(FERNET_KEY, str) else FERNET_KEY)
 
 def encrypt(data: str) -> str:
     return fernet.encrypt(data.encode()).decode()

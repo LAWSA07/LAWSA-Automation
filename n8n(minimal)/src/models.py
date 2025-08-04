@@ -43,4 +43,5 @@ class CredentialModel(BaseModel):
 class UserModel(BaseModel):
     username: str
     hashed_password: str
-    email: str 
+    email: str
+    name: str 

@@ -8,6 +8,7 @@ from .models import UserModel
 from bson import ObjectId
 from .config import SECRET_KEY
 from pydantic import BaseModel
+from pymongo.errors import DuplicateKeyError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -62,6 +63,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
+        exp = payload.get("exp")
+        from datetime import datetime, timezone
+        if exp is None or datetime.now(timezone.utc).timestamp() > exp:
+            raise HTTPException(status_code=401, detail="Token expired")
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)
@@ -95,8 +100,8 @@ MONGO_URI = "mongodb://localhost:27017/yourappdb"
 @router.post("/register")
 async def register(req: RegisterRequest):
     client, db = get_db_from_uri(MONGO_URI)
-    if await db.users.find_one({"email": req.email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
+    # Ensure unique index on email
+    await db.users.create_index("email", unique=True)
     hashed_password = get_password_hash(req.password)
     user_dict = {
         "email": req.email,
@@ -104,7 +109,10 @@ async def register(req: RegisterRequest):
         "hashed_password": hashed_password,
         "role": "user"
     }
-    result = await db.users.insert_one(user_dict)
+    try:
+        result = await db.users.insert_one(user_dict)
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="Email already registered")
     user_dict["_id"] = str(result.inserted_id)
     return {"success": True, "username": req.email, "email": req.email}
 
@@ -115,4 +123,20 @@ async def login(req: LoginRequest):
     if not user or not verify_password(req.password, user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     access_token = create_access_token({"sub": user["username"]})
-    return {"access_token": access_token, "token_type": "bearer"} 
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+async def logout():
+    # In a stateless JWT system, logout is handled client-side by deleting the token.
+    # For blacklisting, implement a token blacklist here.
+    return {"success": True, "message": "Logged out"}
+
+@router.get("/me")
+async def get_me(user=Depends(get_current_user)):
+    return {
+        "username": user.get("username", ""),
+        "email": user.get("email", ""),
+        "name": user.get("name", ""),
+        "avatar": user.get("avatar", ""),
+        "status": user.get("status", "")
+    } 

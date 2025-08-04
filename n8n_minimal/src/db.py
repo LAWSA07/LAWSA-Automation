@@ -1,6 +1,10 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 
+_client_cache = {}
+
 def get_db_from_uri(connection_string: str):
-    client = AsyncIOMotorClient(connection_string)
+    if connection_string not in _client_cache:
+        _client_cache[connection_string] = AsyncIOMotorClient(connection_string)
+    client = _client_cache[connection_string]
     db = client.get_default_database()
     return client, db 

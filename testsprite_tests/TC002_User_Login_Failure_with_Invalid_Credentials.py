@@ -45,43 +45,13 @@ async def run_test():
                 pass
         
         # Interact with the page elements to simulate user flow
-        # Scroll down to find login page link or button
-        await page.mouse.wheel(0, window.innerHeight)
-        
-
-        # Scroll down further to find login page link or login form
-        await page.mouse.wheel(0, window.innerHeight)
-        
-
-        # Try to navigate directly to the login page URL /login
-        await page.goto('http://localhost:5173/login', timeout=10000)
-        
-
-        # Scroll down or extract content to find login form or input fields for username and password
-        await page.mouse.wheel(0, window.innerHeight)
-        
-
-        # Try to find alternative login page or method to access login form, or verify if login is integrated differently
-        await page.goto('http://localhost:5173/signin', timeout=10000)
-        
-
-        # Try to find any clickable elements or links that might lead to a login form or try to extract content to confirm no login form present
-        await page.mouse.wheel(0, window.innerHeight)
-        
-
-        # Click on the 'Input' node to check if it reveals or triggers the login form
+        # Find and navigate to the login page.
         frame = context.pages[-1]
-        elem = frame.locator('xpath=html/body/div/div/div/aside/div[3]').nth(0)
+        elem = frame.locator('xpath=html/body/div/div/div[2]/aside/div/button').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
 
-        # Click on the 'Agentic' node to check if it reveals or triggers the login form
-        frame = context.pages[-1]
-        elem = frame.locator('xpath=html/body/div/div/div/aside/div[4]').nth(0)
-        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
-        
-
-        assert False, 'Test failed: login did not behave as expected with invalid credentials'
+        assert False, 'Test failed: Expected login failure assertion not implemented.'
         await asyncio.sleep(5)
     
     finally:

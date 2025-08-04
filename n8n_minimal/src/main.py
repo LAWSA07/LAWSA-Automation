@@ -5,7 +5,7 @@ import asyncio
 from .api_workflows import router as workflows_router
 from .api_executions import router as executions_router
 from .api_credentials import router as credentials_router
-from .api_auth import router as auth_router
+from .api_auth import router as auth_router, get_current_user
 from .scheduler import register_schedule_job
 from fastapi import Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,11 +52,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(workflows_router)
+app.include_router(workflows_router, prefix="/api/workflows")
 app.include_router(executions_router)
 app.include_router(credentials_router)
 app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api/users")
 app.include_router(hitl_router)
+app.include_router(credentials_router, prefix="/api/credentials")
 
 # Persistent memory for conversations (in-memory SQLite for now)
 memory = SqliteSaver.from_conn_string(":memory:")
@@ -80,6 +82,34 @@ def list_agent_states():
     return {"hashes": list_states()}
 
 app.include_router(memory_router)
+
+tools_router = APIRouter(prefix="/api/tools", tags=["tools"])
+
+@tools_router.get("/")
+async def get_tools(user=Depends(get_current_user)):
+    """
+    Returns a list of available tools and their configurations.
+    """
+    return [
+        {
+            "name": "tavily_search",
+            "config": {"api_key": "string", "search_depth": "basic|advanced"}
+        },
+        {
+            "name": "multiply",
+            "config": {"a": "number", "b": "number"}
+        },
+        {
+            "name": "send_email",
+            "config": {"smtp_server": "string", "username": "string", "password": "string", "to": "string", "subject": "string", "body": "string"}
+        },
+        {
+            "name": "post_to_slack",
+            "config": {"webhook_url": "string", "channel": "string", "message": "string"}
+        }
+    ]
+
+app.include_router(tools_router)
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -177,12 +207,39 @@ async def inject_credentials_into_tools(workflow, username=None):
     return workflow
 
 @app.post("/execute-agent")
-async def execute_agent(request: ExecutionRequest):
+async def execute_agent(request: ExecutionRequest, user=Depends(get_current_user)):
+    import sys
+    import json as _json
+    try:
+        raw_body = await request.json()
+        print("[DEBUG] Raw request body:", _json.dumps(raw_body, indent=2), file=sys.stderr)
+    except Exception as e:
+        print(f"[DEBUG] Could not print raw request body: {e}", file=sys.stderr)
+    print("[DEBUG] /execute-agent endpoint called")
     """
     Executes a dynamically constructed agentic graph and streams the results.
     """
     # Inject credentials into tool nodes before execution
     workflow = request.graph
+    # --- Validation: Tool/LLM config ---
+    from fastapi import HTTPException
+    from n8n_minimal.src.data.models import AVAILABLE_TOOLS, AVAILABLE_MODELS
+    for node in getattr(workflow, 'nodes', []):
+        if getattr(node, 'type', None) == 'tool':
+            tool_type = node.config.get('toolType') or node.config.get('type')
+            tool = next((t for t in AVAILABLE_TOOLS if t['name'] == tool_type), None)
+            if not tool:
+                raise HTTPException(status_code=400, detail=f"Unsupported tool type: {tool_type}")
+            for field in tool['configFields']:
+                if field.get('required') and not node.config.get(field['name']):
+                    raise HTTPException(status_code=400, detail=f"Tool node '{tool['displayName']}' is missing required field: {field['label']}")
+            # Credential validation
+            if 'credentialId' in node.config and not node.config.get('api_key'):
+                raise HTTPException(status_code=400, detail=f"Tool node '{tool['displayName']}' is missing injected credential.")
+        if getattr(node, 'type', None) == 'agentic':
+            # LLM validation (simplified, extend as needed)
+            if not node.config.get('models'):
+                raise HTTPException(status_code=400, detail="Agentic node is missing LLM model configuration.")
     workflow = await inject_credentials_into_tools(workflow)
     try:
         # 1. Dynamically build the graph from the frontend's definition

@@ -45,12 +45,11 @@ const API = {
     const res = await fetch(`${API_BASE_URL}/executions/${id}`, { headers: getAuthHeaders() });
     return handleResponse(res);
   },
-  async createCredential(name, type, data) {
-    // Fix: use 'type' instead of 'type_' in the request body
+  async createCredential(name, type_, data) {
     const res = await fetch(`${API_BASE_URL}/credentials`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({ name, type, data }),
+      body: JSON.stringify({ name, type_, data }),
     });
     return handleResponse(res);
   },
@@ -65,55 +64,55 @@ const API = {
   async createProject(project) {
     const res = await fetch(`${API_BASE_URL}/workflows/projects`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(project),
     });
     return handleResponse(res);
   },
   async listProjects() {
-    const res = await fetch(`${API_BASE_URL}/workflows/projects`);
+    const res = await fetch(`${API_BASE_URL}/workflows/projects`, { headers: getAuthHeaders() });
     return handleResponse(res);
   },
   async getProject(id) {
-    const res = await fetch(`${API_BASE_URL}/workflows/projects/${id}`);
+    const res = await fetch(`${API_BASE_URL}/workflows/projects/${id}`, { headers: getAuthHeaders() });
     return handleResponse(res);
   },
   async updateProject(id, project) {
     const res = await fetch(`${API_BASE_URL}/workflows/projects/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(project),
     });
     return handleResponse(res);
   },
   async deleteProject(id) {
-    const res = await fetch(`${API_BASE_URL}/workflows/projects/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE_URL}/workflows/projects/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     return handleResponse(res);
   },
   async createTemplate(name, description, workflow) {
     const res = await fetch(`${API_BASE_URL}/templates`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ name, description, workflow }),
     });
     return handleResponse(res);
   },
   async listTemplates() {
-    const res = await fetch(`${API_BASE_URL}/templates`);
+    const res = await fetch(`${API_BASE_URL}/templates`, { headers: getAuthHeaders() });
     return handleResponse(res);
   },
   async getTemplate(id) {
-    const res = await fetch(`${API_BASE_URL}/templates/${id}`);
+    const res = await fetch(`${API_BASE_URL}/templates/${id}`, { headers: getAuthHeaders() });
     return handleResponse(res);
   },
   async deleteTemplate(id) {
-    const res = await fetch(`${API_BASE_URL}/templates/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE_URL}/templates/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     return handleResponse(res);
   },
   async updateTemplate(id, name, description, workflow) {
     const res = await fetch(`${API_BASE_URL}/templates/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ name, description, workflow }),
     });
     return handleResponse(res);
@@ -121,25 +120,25 @@ const API = {
   async createVariable(key, value) {
     const res = await fetch(`${API_BASE_URL}/variables`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ key, value }),
     });
     return handleResponse(res);
   },
   async listVariables() {
-    const res = await fetch(`${API_BASE_URL}/variables`);
+    const res = await fetch(`${API_BASE_URL}/variables`, { headers: getAuthHeaders() });
     return handleResponse(res);
   },
   async updateVariable(key, value) {
     const res = await fetch(`${API_BASE_URL}/variables/${key}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ value }),
     });
     return handleResponse(res);
   },
   async deleteVariable(key) {
-    const res = await fetch(`${API_BASE_URL}/variables/${key}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE_URL}/variables/${key}`, { method: 'DELETE', headers: getAuthHeaders() });
     return handleResponse(res);
   },
 };

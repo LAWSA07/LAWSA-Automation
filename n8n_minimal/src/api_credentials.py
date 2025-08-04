@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
 from .db import get_db_from_uri
@@ -12,7 +13,10 @@ from .credentials import save_credential, get_connection_string
 from .api_workflows import validate_mongodb_connection
 from .audit import log_audit_action
 
-fernet = Fernet(SECRET_KEY.encode())
+FERNET_KEY = os.environ.get("FERNET_KEY")
+if not FERNET_KEY:
+    raise RuntimeError("FERNET_KEY environment variable must be set for credential encryption.")
+fernet = Fernet(FERNET_KEY.encode() if isinstance(FERNET_KEY, str) else FERNET_KEY)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 ALGORITHM = "HS256"
