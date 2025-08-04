@@ -4,6 +4,7 @@ import WorkflowEditor from './components/WorkflowEditor';
 import './App.css';
 import Sidebar from './components/Sidebar';
 import OnboardingTour from './components/OnboardingTour';
+import HomePage from './components/HomePage';
 
 // Debounce utility
 const debounce = (func: (...args: any[]) => void, wait: number) => {
@@ -180,6 +181,7 @@ const App: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showRegister, setShowRegister] = useState(false);
+  const [showHomepage, setShowHomepage] = useState(!localStorage.getItem('lawsa_token'));
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,6 +247,17 @@ const App: React.FC = () => {
     showToast('Welcome to LAWSA! Start building your first workflow.', 'success');
   };
 
+  // Show homepage if no token and homepage flag is true
+  if (!token && showHomepage) {
+    return (
+      <HomePage 
+        onGetStarted={() => setShowHomepage(false)}
+        onLogin={() => setShowHomepage(false)}
+      />
+    );
+  }
+
+  // Show login form if no token
   if (!token) {
     return (
       <motion.div 
