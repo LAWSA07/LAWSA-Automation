@@ -15,6 +15,13 @@ langchain
 langchain-openai
 langchain-anthropic
 langchain-groq
+langchain-together
+langchain-cohere
+langchain-mistralai
+langchain-tavily
 langgraph
 bs4
-chroma 
+chroma
+networkx
+pydantic
+python-multipart 

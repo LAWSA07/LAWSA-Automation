@@ -6,6 +6,7 @@ import time
 from .api_workflows import router as workflows_router
 from .api_executions import router as executions_router
 from .api_credentials import router as credentials_router
+from .api_credentials_enhanced import router as enhanced_credentials_router
 from .api_auth import router as auth_router, get_current_user
 from .scheduler import register_schedule_job
 from fastapi import Depends
@@ -14,7 +15,9 @@ from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 import json
 from .schemas import ExecutionRequest
-from .agent.builder import create_agentic_graph, AgentState
+from .agent.builder import create_agentic_graph, AgentState, validate_workflow, get_workflow_metadata
+from .agent.components import AVAILABLE_MODELS, MEMORY_BACKENDS, TOOL_REGISTRY
+from .credential_manager import credential_manager
 from langgraph.checkpoint.sqlite import SqliteSaver
 import logging
 from .monitoring import add_metrics
@@ -56,6 +59,7 @@ app.add_middleware(
 app.include_router(workflows_router, prefix="/api/workflows")
 app.include_router(executions_router)
 app.include_router(credentials_router)
+app.include_router(enhanced_credentials_router)  # Enhanced credential management
 app.include_router(auth_router)
 app.include_router(auth_router, prefix="/api/users")
 app.include_router(hitl_router)
@@ -94,118 +98,243 @@ async def get_tools(user=Depends(get_current_user)):
     return [
         {
             "name": "tavily_search",
-            "config": {"api_key": "string", "search_depth": "basic|advanced"}
+            "display_name": "Tavily Search",
+            "description": "Web search and information retrieval",
+            "config_fields": [
+                {"name": "api_key", "label": "Tavily API Key", "type": "text", "required": True},
+                {"name": "search_depth", "label": "Search Depth", "type": "select", "options": ["basic", "advanced"], "default": "basic"}
+            ]
         },
         {
             "name": "multiply",
-            "config": {"a": "number", "b": "number"}
+            "display_name": "Multiply",
+            "description": "Multiply two numbers",
+            "config_fields": [
+                {"name": "a", "label": "Number A", "type": "number", "required": True},
+                {"name": "b", "label": "Number B", "type": "number", "required": True}
+            ]
         },
         {
             "name": "send_email",
-            "config": {"smtp_server": "string", "username": "string", "password": "string", "to": "string", "subject": "string", "body": "string"}
+            "display_name": "Send Email",
+            "description": "Send an email via SMTP",
+            "config_fields": [
+                {"name": "to", "label": "To", "type": "text", "required": True},
+                {"name": "subject", "label": "Subject", "type": "text", "required": True},
+                {"name": "body", "label": "Body", "type": "textarea", "required": True}
+            ]
         },
         {
             "name": "post_to_slack",
-            "config": {"webhook_url": "string", "channel": "string", "message": "string"}
+            "display_name": "Post to Slack",
+            "description": "Post a message to a Slack channel",
+            "config_fields": [
+                {"name": "channel", "label": "Channel", "type": "text", "required": True},
+                {"name": "message", "label": "Message", "type": "textarea", "required": True}
+            ]
         }
     ]
 
 app.include_router(tools_router)
 
+# New API endpoints for enhanced functionality
+api_router = APIRouter(prefix="/api", tags=["api"])
+
+@api_router.get("/models")
+async def get_available_models(user=Depends(get_current_user)):
+    """
+    Returns a list of available models by provider.
+    """
+    return AVAILABLE_MODELS
+
+@api_router.get("/memory-backends")
+async def get_memory_backends(user=Depends(get_current_user)):
+    """
+    Returns a list of available memory backends.
+    """
+    return MEMORY_BACKENDS
+
+@api_router.post("/validate-workflow")
+async def validate_workflow_endpoint(workflow: dict, user=Depends(get_current_user)):
+    """
+    Validates a workflow and returns any errors found.
+    """
+    try:
+        from .schemas import WorkflowGraph
+        workflow_graph = WorkflowGraph(**workflow)
+        errors = validate_workflow(workflow_graph)
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "metadata": get_workflow_metadata(workflow_graph)
+        }
+    except Exception as e:
+        return {
+            "valid": False,
+            "errors": [f"Validation failed: {str(e)}"],
+            "metadata": None
+        }
+
+@api_router.get("/providers")
+async def get_providers(user=Depends(get_current_user)):
+    """
+    Returns a list of available LLM providers.
+    """
+    return [
+        {
+            "name": "groq",
+            "display_name": "Groq",
+            "description": "Ultra-fast inference with Llama, Mixtral, and other models",
+            "models": AVAILABLE_MODELS.get("groq", [])
+        },
+        {
+            "name": "openai",
+            "display_name": "OpenAI",
+            "description": "GPT-4, GPT-3.5, and other OpenAI models",
+            "models": AVAILABLE_MODELS.get("openai", [])
+        },
+        {
+            "name": "anthropic",
+            "display_name": "Anthropic",
+            "description": "Claude 3.5, Claude 3, and other Anthropic models",
+            "models": AVAILABLE_MODELS.get("anthropic", [])
+        },
+        {
+            "name": "together",
+            "display_name": "Together AI",
+            "description": "Open source models including Llama, Falcon, and more",
+            "models": AVAILABLE_MODELS.get("together", [])
+        },
+        {
+            "name": "cohere",
+            "display_name": "Cohere",
+            "description": "Command and other Cohere models",
+            "models": AVAILABLE_MODELS.get("cohere", [])
+        },
+        {
+            "name": "mistral",
+            "display_name": "Mistral AI",
+            "description": "Mistral Large, Medium, Small, and open source models",
+            "models": AVAILABLE_MODELS.get("mistral", [])
+        }
+    ]
+
+app.include_router(api_router)
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
-    <html><body style='background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;'>
-    <h1 style='font-size:48px;font-weight:900;letter-spacing:2px;margin-bottom:32px;'>lawsa</h1>
-    <a href='/register' style='background:#fff;color:#000;border:none;border-radius:8px;padding:16px 40px;font-size:22px;font-weight:700;text-decoration:none;'>Get Started</a>
-    </body></html>
+    <html>
+        <head>
+            <title>LAWSA Backend</title>
+        </head>
+        <body>
+            <h1>LAWSA Backend API</h1>
+            <p>Welcome to the LAWSA backend API. Use the following endpoints:</p>
+            <ul>
+                <li><a href="/docs">API Documentation</a></li>
+                <li><a href="/health">Health Check</a></li>
+            </ul>
+        </body>
+    </html>
     """
 
 @app.get("/register", response_class=HTMLResponse)
 def register():
     return """
-    <html><body style='background:#fff;color:#000;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;'>
-    <h2 style='font-size:32px;font-weight:800;margin-bottom:24px;'>Register</h2>
-    <input placeholder='Email' style='margin-bottom:12px;padding:10px;border-radius:6px;border:1px solid #bbb;width:240px;'/>
-    <input placeholder='Password' type='password' style='margin-bottom:18px;padding:10px;border-radius:6px;border:1px solid #bbb;width:240px;'/>
-    <a href='/login' style='background:#000;color:#fff;border:none;border-radius:8px;padding:12px 32px;font-size:18px;font-weight:700;text-decoration:none;margin-bottom:12px;'>Register</a>
-    <a href='/login' style='background:none;color:#000;border:none;font-size:15px;text-decoration:underline;'>Already have an account? Login</a>
-    </body></html>
+    <html>
+        <head>
+            <title>Register - LAWSA</title>
+        </head>
+        <body>
+            <h1>Register</h1>
+            <form action="/auth/register" method="post">
+                <input type="email" name="email" placeholder="Email" required><br>
+                <input type="password" name="password" placeholder="Password" required><br>
+                <button type="submit">Register</button>
+            </form>
+        </body>
+    </html>
     """
 
 @app.get("/login", response_class=HTMLResponse)
 def login():
     return """
-    <html><body style='background:#fff;color:#000;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;'>
-    <h2 style='font-size:32px;font-weight:800;margin-bottom:24px;'>Login</h2>
-    <input placeholder='Email' style='margin-bottom:12px;padding:10px;border-radius:6px;border:1px solid #bbb;width:240px;'/>
-    <input placeholder='Password' type='password' style='margin-bottom:18px;padding:10px;border-radius:6px;border:1px solid #bbb;width:240px;'/>
-    <a href='/automation' style='background:#000;color:#fff;border:none;border-radius:8px;padding:12px 32px;font-size:18px;font-weight:700;text-decoration:none;margin-bottom:12px;'>Login</a>
-    <a href='/register' style='background:none;color:#000;border:none;font-size:15px;text-decoration:underline;'>Don't have an account? Register</a>
-    </body></html>
+    <html>
+        <head>
+            <title>Login - LAWSA</title>
+        </head>
+        <body>
+            <h1>Login</h1>
+            <form action="/auth/login" method="post">
+                <input type="email" name="email" placeholder="Email" required><br>
+                <input type="password" name="password" placeholder="Password" required><br>
+                <button type="submit">Login</button>
+            </form>
+        </body>
+    </html>
     """
 
 @app.get("/automation", response_class=HTMLResponse)
 def automation():
     return """
-    <html><body style='background:#fff;color:#000;'><h2 style='text-align:center;margin-top:40px;font-size:32px;'>Main Automation Page</h2></body></html>
+    <html>
+        <head>
+            <title>Automation - LAWSA</title>
+        </head>
+        <body>
+            <h1>Automation Dashboard</h1>
+            <p>This is where you can manage your workflows.</p>
+        </body>
+    </html>
     """
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 @app.post("/workflows/execute/{workflow_id}")
 async def execute_workflow_endpoint(workflow_id: str, request: Request):
     # TODO: Load workflow from DB by ID
     # For now, use a mock workflow
-    workflow = {
+    mock_workflow = {
         "nodes": [
-            {"type": "ManualTriggerNode", "config": {}},
-            {"type": "CodeNode", "config": {"code": "result = {'msg': 'Hello from CodeNode!'}"}},
-        ]
+            {"id": "1", "type": "ManualTriggerNode", "config": {}},
+            {"id": "2", "type": "CodeNode", "config": {"code": "result = {'message': 'Hello from workflow!'}"}}
+        ],
+        "connections": [{"source": "1", "target": "2"}]
     }
-    result = await execute_workflow(workflow)
+    result = await execute_workflow(mock_workflow)
     return {"result": result}
 
 @app.post("/workflows/schedule/{workflow_id}")
 async def schedule_workflow(workflow_id: str, cron: dict, username: str = Depends(lambda: None)):
     # TODO: Load workflow from DB by ID and user
     # For now, use a mock workflow
-    workflow = {
+    mock_workflow = {
         "nodes": [
-            {"type": "ScheduleTriggerNode", "config": {}},
-            {"type": "CodeNode", "config": {"code": "result = {'msg': 'Scheduled!'}"}},
-        ]
+            {"id": "1", "type": "ScheduleTriggerNode", "config": {"cron": cron.get("expression", "0 0 * * *")}},
+            {"id": "2", "type": "CodeNode", "config": {"code": "result = {'message': 'Scheduled task executed!'}"}}
+        ],
+        "connections": [{"source": "1", "target": "2"}]
     }
-    register_schedule_job(workflow, cron)
-    return {"scheduled": True}
+    # Register the scheduled job
+    job_id = register_schedule_job(workflow_id, cron.get("expression", "0 0 * * *"), mock_workflow)
+    return {"job_id": job_id, "status": "scheduled"}
 
 @app.post("/webhook/{workflow_id}")
 async def webhook_trigger(workflow_id: str):
     # TODO: Load workflow from DB by ID and check for WebhookTriggerNode
     # For now, use a mock workflow
-    workflow = {
+    mock_workflow = {
         "nodes": [
-            {"type": "WebhookTriggerNode", "config": {}},
-            {"type": "CodeNode", "config": {"code": "result = {'msg': 'Webhook triggered!'}"}},
-        ]
+            {"id": "1", "type": "WebhookTriggerNode", "config": {}},
+            {"id": "2", "type": "CodeNode", "config": {"code": "result = {'message': 'Webhook triggered!'}"}}
+        ],
+        "connections": [{"source": "1", "target": "2"}]
     }
-    result = await execute_workflow(workflow)
+    result = await execute_workflow(mock_workflow)
     return {"result": result}
-
-async def inject_credentials_into_tools(workflow, username=None):
-    for node in getattr(workflow, 'nodes', []):
-        if node.type == 'tool' and node.config and node.config.get('credentialId'):
-            cred_id = node.config['credentialId']
-            try:
-                cred = await get_credential(cred_id, username=username) if username else await get_credential(cred_id)
-                if cred and 'data' in cred:
-                    # Inject as 'api_key' or 'password' depending on tool type
-                    node.config['api_key'] = cred['data']
-            except Exception as e:
-                print(f"Credential injection failed for node {node.id}: {e}")
-    return workflow
 
 @app.post("/execute-agent")
 async def execute_agent(request: ExecutionRequest, user=Depends(get_current_user)):
@@ -220,54 +349,33 @@ async def execute_agent(request: ExecutionRequest, user=Depends(get_current_user
     """
     Executes a dynamically constructed agentic graph and streams the results.
     """
-    # Inject credentials into tool nodes before execution
+    # Get the workflow from the request
     workflow = request.graph
-    # --- Validation: Tool/LLM config ---
-    from fastapi import HTTPException
-    # Define available tools and models locally since data.models doesn't exist
-    AVAILABLE_TOOLS = [
-        {
-            "name": "tavily_search",
-            "displayName": "Tavily Search",
-            "configFields": [
-                {"name": "api_key", "label": "API Key", "required": True},
-                {"name": "search_depth", "label": "Search Depth", "required": False}
-            ]
-        },
-        {
-            "name": "multiply",
-            "displayName": "Multiply",
-            "configFields": [
-                {"name": "a", "label": "Number A", "required": True},
-                {"name": "b", "label": "Number B", "required": True}
-            ]
-        }
-    ]
-    AVAILABLE_MODELS = ["gpt-4", "gpt-3.5-turbo", "claude-3"]
-    for node in getattr(workflow, 'nodes', []):
-        if getattr(node, 'type', None) == 'tool':
-            tool_type = node.config.get('toolType') or node.config.get('type')
-            tool = next((t for t in AVAILABLE_TOOLS if t['name'] == tool_type), None)
-            if not tool:
-                raise HTTPException(status_code=400, detail=f"Unsupported tool type: {tool_type}")
-            for field in tool['configFields']:
-                if field.get('required') and not node.config.get(field['name']):
-                    raise HTTPException(status_code=400, detail=f"Tool node '{tool['displayName']}' is missing required field: {field['label']}")
-            # Credential validation
-            if 'credentialId' in node.config and not node.config.get('api_key'):
-                raise HTTPException(status_code=400, detail=f"Tool node '{tool['displayName']}' is missing injected credential.")
-        if getattr(node, 'type', None) == 'agentic':
-            # LLM validation (simplified, extend as needed)
-            if not node.config.get('models'):
-                raise HTTPException(status_code=400, detail="Agentic node is missing LLM model configuration.")
-    workflow = await inject_credentials_into_tools(workflow)
+    
+    # Inject user credentials into the workflow
+    try:
+        workflow = await credential_manager.inject_credentials_into_workflow(user, workflow)
+        logger.info(f"Injected credentials into workflow for user {user}")
+    except Exception as e:
+        logger.error(f"Failed to inject credentials for user {user}: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to inject credentials: {str(e)}")
+    
+    # Validate the workflow
+    try:
+        errors = validate_workflow(workflow)
+        if errors:
+            raise HTTPException(status_code=400, detail=f"Workflow validation failed: {errors}")
+    except Exception as e:
+        logger.error(f"Workflow validation failed for user {user}: {e}")
+        raise HTTPException(status_code=400, detail=f"Workflow validation failed: {str(e)}")
+    
     try:
         # 1. Dynamically build the graph from the frontend's definition
         graph_builder = create_agentic_graph(workflow)
         # 2. Compile the graph with memory persistence
         runnable = graph_builder.compile()
     except ValueError as e:
-        from fastapi import HTTPException
+        logger.error(f"Failed to build agentic graph for user {user}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
     # 3. Define the async generator for streaming responses
@@ -312,50 +420,41 @@ async def mock_register(req: dict):
         raise HTTPException(status_code=400, detail="Email and password required")
     
     if email in mock_users:
-        raise HTTPException(status_code=409, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="User already exists")
     
-    mock_users[email] = {
-        "email": email,
-        "username": email,
-        "hashed_password": password,  # In production, hash this
-        "role": "user"
-    }
-    return {"success": True, "username": email, "email": email}
+    # In production, hash the password
+    mock_users[email] = {"email": email, "password": password}
+    
+    # Create JWT token
+    payload = {"sub": email, "exp": datetime.utcnow() + timedelta(hours=24)}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"access_token": token, "token_type": "bearer"}
 
 @app.post("/auth/login")
 async def mock_login(req: dict):
     email = req.get("email")
     password = req.get("password")
-    if not email or not password:
-        raise HTTPException(status_code=400, detail="Email and password required")
     
-    user = mock_users.get(email)
-    if not user or user["hashed_password"] != password:
+    if email not in mock_users or mock_users[email]["password"] != password:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    # Create a simple token (in production, use proper JWT)
-    token = f"mock_token_{email}_{int(time.time())}"
+    # Create JWT token
+    payload = {"sub": email, "exp": datetime.utcnow() + timedelta(hours=24)}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
     return {"access_token": token, "token_type": "bearer"}
 
 @app.get("/auth/me")
 async def mock_me(token: str = Header(None)):
-    if not token or not token.startswith("mock_token_"):
-        raise HTTPException(status_code=401, detail="Invalid token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Token required")
     
-    # Extract email from token
-    parts = token.split("_")
-    if len(parts) < 3:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    email = parts[2]
-    user = mock_users.get(email)
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    
-    return {
-        "username": user.get("username", ""),
-        "email": user.get("email", ""),
-        "name": user.get("name", ""),
-        "avatar": user.get("avatar", ""),
-        "status": user.get("status", "")
-    } 
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if email not in mock_users:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return {"email": email}
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token") 
