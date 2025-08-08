@@ -95,7 +95,9 @@ def get_current_user_with_role(required_role: str):
 def admin_ping(user = Depends(get_current_user_with_role("admin"))):
     return {"status": "admin pong"}
 
-MONGO_URI = "mongodb://localhost:27017/yourappdb"
+from .config import get_mongodb_uri
+
+MONGO_URI = get_mongodb_uri()
 
 @router.post("/register")
 async def register(req: RegisterRequest):

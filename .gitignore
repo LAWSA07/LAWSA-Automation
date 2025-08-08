@@ -4,4 +4,45 @@ LAWSA-Automation.git/LAWSA-Automation/
 .DS_Store
 *.pyc
 __pycache__/
-.env 
+.env
+
+# Build outputs
+dist/
+.next/
+build/
+out/
+
+# Temporary files
+temp_*
+*.tmp
+*.temp
+
+# Large files
+*.zip
+*.tar.gz
+*.rar
+
+# Test directories
+test*/
+testsprite_tests/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Coverage reports
+coverage/
+.coverage 
+
+# MongoDB binaries (too large for git)
+mongodb-win32-x86_64-windows-6.0.14/ 

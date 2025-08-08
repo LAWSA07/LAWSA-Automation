@@ -5,7 +5,7 @@ async function handleResponse(res) {
   let data;
   try {
     data = await res.json();
-  } catch (e) {
+  } catch {
     data = null;
   }
   if (!res.ok) {

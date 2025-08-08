@@ -32,10 +32,12 @@ def list_credentials(connection_string):
     _, db = get_db_from_uri(connection_string)
     return [{"id": str(c["_id"]), "name": c["name"], "type": c["type"]} for c in db.credentials.find()]
 
+from .config import get_mongodb_uri
+
 async def save_credential(name: str, connection_string: str):
     encrypted = encrypt_data(connection_string)
     credential_id = f"cred_{uuid.uuid4().hex}"
-    _, db = get_db_from_uri("mongodb://localhost:27017/yourappdb")  # Use your admin DB
+    _, db = get_db_from_uri(get_mongodb_uri())  # Use your admin DB
     await db.credentials.insert_one({
         "credential_id": credential_id,
         "name": name,
@@ -44,7 +46,7 @@ async def save_credential(name: str, connection_string: str):
     return credential_id
 
 async def get_connection_string(credential_id: str):
-    _, db = get_db_from_uri("mongodb://localhost:27017/yourappdb")
+    _, db = get_db_from_uri(get_mongodb_uri())
     cred = await db.credentials.find_one({"credential_id": credential_id})
     if not cred:
         return None

@@ -1,0 +1,16 @@
+{
+  "servers": [
+    {
+      "name": "brightdata.scraper.config",
+      "url": "https://mcp.brightdata.com",
+      "token": "72a86d079869a017a3e27c161dddd2da0884d7c9ff1d92f2e96c1da9ae961cf3",
+      "type": "scraper",
+      "enabled": true,
+      "settings": {
+        "scraping_type": "web",
+        "concurrent_requests": 5,
+        "retry_attempts": 3
+      }
+    }
+  ]
+}
