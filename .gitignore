@@ -46,3 +46,10 @@ coverage/
 
 # MongoDB binaries (too large for git)
 mongodb-win32-x86_64-windows-6.0.14/ 
+
+# Next.js build outputs
+.next/
+out/
+
+# Dependencies
+node_modules/ 

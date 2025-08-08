@@ -1,0 +1,177 @@
+const API_BASE_URL = 'http://localhost:8000';
+
+class ApiService {
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('lawsa_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+  }
+
+  // Auth endpoints
+  async login(email: string, password: string) {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Login failed');
+    }
+
+    return response.json();
+  }
+
+  async register(email: string, password: string, name: string) {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, name }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Registration failed');
+    }
+
+    return response.json();
+  }
+
+  // Workflow endpoints
+  async saveWorkflow(workflowData: any) {
+    const response = await fetch(`${API_BASE_URL}/workflows`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(workflowData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to save workflow');
+    }
+
+    return response.json();
+  }
+
+  async getWorkflows() {
+    const response = await fetch(`${API_BASE_URL}/workflows`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to fetch workflows');
+    }
+
+    return response.json();
+  }
+
+  async getWorkflow(id: string) {
+    const response = await fetch(`${API_BASE_URL}/workflows/${id}`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to fetch workflow');
+    }
+
+    return response.json();
+  }
+
+  async updateWorkflow(id: string, workflowData: any) {
+    const response = await fetch(`${API_BASE_URL}/workflows/${id}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(workflowData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to update workflow');
+    }
+
+    return response.json();
+  }
+
+  async deleteWorkflow(id: string) {
+    const response = await fetch(`${API_BASE_URL}/workflows/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to delete workflow');
+    }
+
+    return response.json();
+  }
+
+  // Credentials endpoints
+  async getCredentials() {
+    const response = await fetch(`${API_BASE_URL}/credentials`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to fetch credentials');
+    }
+
+    return response.json();
+  }
+
+  async saveCredential(credentialData: any) {
+    const response = await fetch(`${API_BASE_URL}/credentials`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(credentialData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to save credential');
+    }
+
+    return response.json();
+  }
+
+  // Execution endpoints
+  async executeWorkflow(workflowId: string, inputData?: any) {
+    const response = await fetch(`${API_BASE_URL}/workflows/${workflowId}/execute`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(inputData || {}),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to execute workflow');
+    }
+
+    return response.json();
+  }
+
+  // Health check
+  async healthCheck() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/health`);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export const apiService = new ApiService();
