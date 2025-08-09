@@ -2,7 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Save, Settings } from 'lucide-react';
+import { X, Save, Settings, Key, Plus } from 'lucide-react';
+import CredentialManager from './CredentialManager';
+
+interface Credential {
+  id: string;
+  name: string;
+  type: string;
+  provider?: string;
+  description?: string;
+  created_at?: string;
+}
 
 interface NodeConfig {
   provider?: string;
@@ -16,6 +26,8 @@ interface NodeConfig {
   format?: string;
   destination?: string;
   config?: Record<string, any>;
+  credential_id?: string;  // Reference to stored credential
+  description?: string;  // Node description
 }
 
 interface NodeConfigPanelProps {
@@ -78,13 +90,153 @@ const AVAILABLE_TOOLS = [
 const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClose }) => {
   const [config, setConfig] = useState<NodeConfig>(node.data.config || {});
   const [activeTab, setActiveTab] = useState('general');
+  const [showCredentialManager, setShowCredentialManager] = useState(false);
+  const [userCredentials, setUserCredentials] = useState<Credential[]>([]);
+  const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
 
   useEffect(() => {
     setConfig(node.data.config || {});
+    loadUserCredentials();
   }, [node]);
+
+  const loadUserCredentials = async () => {
+    try {
+      const token = localStorage.getItem('lawsa_token');
+      const response = await fetch('http://localhost:8000/api/credentials', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const credentials = await response.json();
+        setUserCredentials(credentials);
+        
+        // Find selected credential if credential_id is set
+        if (config.credential_id) {
+          const selected = credentials.find((c: Credential) => c.id === config.credential_id);
+          setSelectedCredential(selected || null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load credentials:', err);
+    }
+  };
 
   const handleSave = () => {
     onUpdate(config);
+  };
+
+  const handleCredentialSelect = (credential: Credential) => {
+    setSelectedCredential(credential);
+    setConfig(prev => ({ ...prev, credential_id: credential.id }));
+    setShowCredentialManager(false);
+  };
+
+  const getCredentialTypeForNode = () => {
+    if (node.data.type === 'llm') {
+      const provider = config.provider || 'groq';
+      return `${provider}_api_key`;
+    } else if (node.data.type === 'tool') {
+      const toolType = config.tool_type || 'tavily_search';
+      if (toolType === 'tavily_search') return 'tavily_api_key';
+      if (toolType === 'send_email') return 'gmail_credentials';
+      if (toolType === 'post_to_slack') return 'slack_webhook';
+    }
+    return null;
+  };
+
+  const getMatchingCredentials = () => {
+    const requiredType = getCredentialTypeForNode();
+    if (!requiredType) return [];
+    
+    return userCredentials.filter(cred => cred.type === requiredType);
+  };
+
+  const renderCredentialSection = () => {
+    const matchingCredentials = getMatchingCredentials();
+    const requiredType = getCredentialTypeForNode();
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-gray-300">
+            Credential
+          </label>
+          <button
+            onClick={() => setShowCredentialManager(true)}
+            className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={12} />
+            Manage
+          </button>
+        </div>
+
+        {selectedCredential ? (
+          <div className="p-3 bg-green-900 border border-green-700 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-200 font-medium">{selectedCredential.name}</p>
+                <p className="text-green-300 text-sm">{selectedCredential.type}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedCredential(null);
+                  setConfig(prev => ({ ...prev, credential_id: undefined }));
+                }}
+                className="text-green-400 hover:text-green-300"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        ) : matchingCredentials.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-400">Select a credential:</p>
+            {matchingCredentials.map(credential => (
+              <button
+                key={credential.id}
+                onClick={() => handleCredentialSelect(credential)}
+                className="w-full p-2 text-left bg-gray-700 border border-gray-600 rounded hover:border-yellow-400 transition-colors"
+              >
+                <p className="text-white font-medium">{credential.name}</p>
+                <p className="text-gray-400 text-sm">{credential.description}</p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="p-3 bg-yellow-900 border border-yellow-700 rounded-lg">
+            <p className="text-yellow-200 text-sm">
+              No {requiredType} credentials found. 
+              <button
+                onClick={() => setShowCredentialManager(true)}
+                className="text-yellow-300 hover:text-yellow-200 underline ml-1"
+              >
+                Create one
+              </button>
+            </p>
+          </div>
+        )}
+
+        {/* Legacy API Key field for backward compatibility */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            API Key (Direct)
+          </label>
+          <input
+            type="password"
+            value={config.api_key || ''}
+            onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            placeholder="Enter API key directly (not recommended)"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Use credential manager above for better security
+          </p>
+        </div>
+      </div>
+    );
   };
 
   const renderLLMConfig = () => (
@@ -123,6 +275,9 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClo
         </select>
       </div>
 
+      {/* Credential Section */}
+      {renderCredentialSection()}
+
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Temperature
@@ -153,19 +308,6 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClo
           placeholder="1000"
         />
       </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          API Key
-        </label>
-        <input
-          type="password"
-          value={config.api_key || ''}
-          onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-          placeholder="Enter API key"
-        />
-      </div>
     </div>
   );
 
@@ -188,18 +330,8 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClo
         </select>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          API Key
-        </label>
-        <input
-          type="password"
-          value={config.api_key || ''}
-          onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-          placeholder="Enter API key"
-        />
-      </div>
+      {/* Credential Section */}
+      {renderCredentialSection()}
     </div>
   );
 
@@ -305,10 +437,59 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClo
     </div>
   );
 
+  const renderTavilySearchConfig = () => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          API Key
+        </label>
+        <input
+          type="password"
+          value={config.api_key || ''}
+          onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
+          placeholder="Enter your Tavily API key"
+          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Query Template
+        </label>
+        <input
+          type="text"
+          value={config.query_template || '{{input}}'}
+          onChange={(e) => setConfig({ ...config, query_template: e.target.value })}
+          placeholder="{{input}}"
+          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          Use {{input}} to reference the input from previous nodes
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Number of Results
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="10"
+          value={config.num_results || 3}
+          onChange={(e) => setConfig({ ...config, num_results: parseInt(e.target.value) || 3 })}
+          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        />
+      </div>
+    </div>
+  );
+
   const getConfigContent = () => {
     switch (node.data.type) {
       case 'llm':
         return renderLLMConfig();
+      case 'tavily_search':
+        return renderTavilySearchConfig();
       case 'tool':
         return renderToolConfig();
       case 'input':
@@ -330,68 +511,77 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClo
   ];
 
   return (
-    <motion.div
-      initial={{ x: 400 }}
-      animate={{ x: 0 }}
-      exit={{ x: 400 }}
-      className="w-96 bg-gray-800 border-l border-gray-700 flex flex-col"
-    >
-      {/* Header */}
-      <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-            style={{ backgroundColor: node.data.color + '20' }}
-          >
-            {node.data.icon}
+    <>
+      <motion.div
+        initial={{ x: 400 }}
+        animate={{ x: 0 }}
+        exit={{ x: 400 }}
+        className="w-96 bg-gray-800 border-l border-gray-700 flex flex-col"
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+              style={{ backgroundColor: node.data.color + '20' }}
+            >
+              {node.data.icon}
+            </div>
+            <div>
+              <h3 className="text-white font-semibold">{node.data.label}</h3>
+              <p className="text-sm text-gray-400">{node.data.type}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-white font-semibold">{node.data.label}</h3>
-            <p className="text-sm text-gray-400">{node.data.type}</p>
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-white p-1"
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-gray-700">
-        {tabs.map(tab => (
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'text-yellow-400 border-b-2 border-yellow-400'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            onClick={onClose}
+            className="text-gray-400 hover:text-white p-1"
           >
-            {tab.label}
+            <X size={20} />
           </button>
-        ))}
-      </div>
+        </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {activeTab === 'general' && renderGeneralConfig()}
-        {activeTab === 'config' && getConfigContent()}
-      </div>
+        {/* Tabs */}
+        <div className="flex border-b border-gray-700">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'text-yellow-400 border-b-2 border-yellow-400'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-700">
-        <button
-          onClick={handleSave}
-          className="w-full bg-yellow-400 text-gray-900 py-2 px-4 rounded-lg font-medium hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2"
-        >
-          <Save size={16} />
-          Save Configuration
-        </button>
-      </div>
-    </motion.div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {activeTab === 'general' && renderGeneralConfig()}
+          {activeTab === 'config' && getConfigContent()}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-700">
+          <button
+            onClick={handleSave}
+            className="w-full bg-yellow-400 text-gray-900 py-2 px-4 rounded-lg font-medium hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2"
+          >
+            <Save size={16} />
+            Save Configuration
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Credential Manager Modal */}
+      <CredentialManager
+        isOpen={showCredentialManager}
+        onClose={() => setShowCredentialManager(false)}
+        onCredentialSelect={handleCredentialSelect}
+      />
+    </>
   );
 };
 

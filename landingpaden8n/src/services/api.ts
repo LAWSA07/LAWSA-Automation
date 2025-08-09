@@ -46,7 +46,7 @@ class ApiService {
 
   // Workflow endpoints
   async saveWorkflow(workflowData: any) {
-    const response = await fetch(`${API_BASE_URL}/workflows`, {
+    const response = await fetch(`${API_BASE_URL}/api/workflows`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(workflowData),
@@ -61,7 +61,7 @@ class ApiService {
   }
 
   async getWorkflows() {
-    const response = await fetch(`${API_BASE_URL}/workflows`, {
+    const response = await fetch(`${API_BASE_URL}/api/workflows`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
     });
@@ -75,7 +75,7 @@ class ApiService {
   }
 
   async getWorkflow(id: string) {
-    const response = await fetch(`${API_BASE_URL}/workflows/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/workflows/${id}`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
     });
@@ -89,7 +89,7 @@ class ApiService {
   }
 
   async updateWorkflow(id: string, workflowData: any) {
-    const response = await fetch(`${API_BASE_URL}/workflows/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/workflows/${id}`, {
       method: 'PUT',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(workflowData),
@@ -104,7 +104,7 @@ class ApiService {
   }
 
   async deleteWorkflow(id: string) {
-    const response = await fetch(`${API_BASE_URL}/workflows/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/workflows/${id}`, {
       method: 'DELETE',
       headers: this.getAuthHeaders(),
     });
@@ -161,6 +161,33 @@ class ApiService {
     }
 
     return response.json();
+  }
+
+  async executeRealWorkflow(workflow: any, input: string, threadId: string) {
+    const response = await fetch(`${API_BASE_URL}/execute-real`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({
+        graph: workflow,
+        input: input,
+        thread_id: threadId
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to execute workflow');
+    }
+
+    // Check if the response is text/plain (clean format) or application/json
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/plain')) {
+      // Clean format - return as string
+      return await response.text();
+    } else {
+      // JSON format - return as JSON
+      return await response.json();
+    }
   }
 
   // Health check

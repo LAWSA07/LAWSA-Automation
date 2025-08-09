@@ -21,6 +21,7 @@ import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
 import CustomNode from './CustomNode';
 import NodeConfigPanel from './NodeConfigPanel';
+import { apiService } from '@/services/api';
 
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
@@ -120,6 +121,7 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
         schedule: '⏰',
         agentic: '🧠',
         llm: '🤖',
+        tavily_search: '🔍',
         memory: '💾',
         tool: '🔧',
         http: '🌐',
@@ -138,6 +140,7 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
         schedule: '#43D675',
         agentic: '#a044ff',
         llm: '#a044ff',
+        tavily_search: '#FF6B6B',
         memory: '#FFD700',
         tool: '#3498db',
         http: '#3498db',
@@ -156,6 +159,10 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
           model: 'llama3-8b-8192',
           temperature: 0.7,
           max_tokens: 1000,
+        },
+        tavily_search: {
+          query_template: '{{input}}',
+          num_results: 3,
         },
         tool: {
           tool_type: 'tavily_search',
@@ -213,40 +220,36 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
           })),
         };
 
-        const response = await fetch('http://localhost:8000/execute-agent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('lawsa_token') || ''}`,
-          },
-          body: JSON.stringify({
-            graph: workflow,
-            input: 'Hello, please help me with this workflow.',
-            thread_id: `thread_${Date.now()}`,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        // Validate nodes before execution
+        for (const node of nodes) {
+          if (node.data.type === 'llm') {
+            if (!node.data.config?.provider || !node.data.config?.model || !node.data.config?.api_key) {
+              throw new Error(`LLM node "${node.data.label}" is missing required fields: provider, model, or API key`);
+            }
+          }
+          if (node.data.type === 'tavily_search') {
+            if (!node.data.config?.api_key) {
+              throw new Error(`Tavily Search node "${node.data.label}" is missing required field: API key`);
+            }
+          }
         }
 
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('No response body');
-        }
-
-        let result = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = new TextDecoder().decode(value);
-          result += chunk;
-          setExecutionOutput(prev => prev + chunk);
-        }
+        const result = await apiService.executeRealWorkflow(
+          workflow,
+          'Test input for workflow execution',
+          `thread_${Date.now()}`
+        );
 
         setExecutionStatus('success');
-        setExecutionOutput(prev => prev + '\n✅ Workflow completed successfully!');
+        
+        // Handle the new clean result format
+        if (typeof result === 'string') {
+          // Clean result format - display directly
+          setExecutionOutput(result);
+        } else {
+          // Fallback to JSON format for backward compatibility
+          setExecutionOutput(JSON.stringify(result, null, 2));
+        }
       } catch (error) {
         setExecutionStatus('error');
         setExecutionOutput(prev => prev + `\n❌ Error: ${error}`);

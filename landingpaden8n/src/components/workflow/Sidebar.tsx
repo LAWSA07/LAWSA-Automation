@@ -12,6 +12,7 @@ const nodeCategories = {
   ai: [
     { type: 'agentic', label: 'AI Agent', icon: '🧠', description: 'Intelligent automation' },
     { type: 'llm', label: 'LLM', icon: '🤖', description: 'Language model integration' },
+    { type: 'tavily_search', label: 'Web Search', icon: '🔍', description: 'Tavily web search' },
     { type: 'memory', label: 'Memory', icon: '💾', description: 'Context storage' }
   ],
   tools: [
@@ -32,6 +33,7 @@ const nodeTypeColors: Record<string, string> = {
   schedule: '#43D675',
   agentic: '#a044ff',
   llm: '#a044ff',
+  tavily_search: '#FF6B6B',
   memory: '#FFD700',
   tool: '#3498db',
   http: '#3498db',
@@ -144,15 +146,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              draggable
-              onDragStart={(e) => handleDragStart(e, node.type)}
-              className="group cursor-grab active:cursor-grabbing"
             >
-              <motion.div
-                className="p-4 bg-gray-700 rounded-lg border border-gray-600 hover:border-yellow-400 transition-all duration-200 hover:shadow-lg hover:shadow-yellow-400/20"
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+              <div
+                draggable
+                onDragStart={(e: React.DragEvent) => handleDragStart(e, node.type)}
+                className="group cursor-grab active:cursor-grabbing"
               >
+                <motion.div
+                  className="p-4 bg-gray-700 rounded-lg border border-gray-600 hover:border-yellow-400 transition-all duration-200 hover:shadow-lg hover:shadow-yellow-400/20"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                 <div className="flex items-center gap-3">
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
@@ -170,6 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart }) => {
                   </div>
                 </div>
               </motion.div>
+              </div>
             </motion.div>
           ))}
         </div>
