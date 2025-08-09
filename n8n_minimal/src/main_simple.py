@@ -14,10 +14,43 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 load_dotenv(os.path.join(PROJECT_ROOT, '.env'), override=False)
 import httpx
 
-# Simple in-memory storage for development
-mock_users = {}
-mock_workflows = {}
-mock_credentials = {}
+# Persistent storage using JSON files
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
+USERS_FILE = os.path.join(DATA_DIR, 'users.json')
+WORKFLOWS_FILE = os.path.join(DATA_DIR, 'workflows.json')
+CREDENTIALS_FILE = os.path.join(DATA_DIR, 'credentials.json')
+
+# Ensure data directory exists
+os.makedirs(DATA_DIR, exist_ok=True)
+
+def load_json_file(file_path: str, default: dict = None) -> dict:
+    """Load data from JSON file, return default if file doesn't exist"""
+    if default is None:
+        default = {}
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                return json.load(f)
+        else:
+            # Create file with default data
+            with open(file_path, 'w') as f:
+                json.dump(default, f, indent=2)
+            return default
+    except (json.JSONDecodeError, IOError):
+        return default
+
+def save_json_file(file_path: str, data: dict):
+    """Save data to JSON file"""
+    try:
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+    except IOError as e:
+        print(f"Error saving to {file_path}: {e}")
+
+# Load persistent data
+mock_users = load_json_file(USERS_FILE, {})
+mock_workflows = load_json_file(WORKFLOWS_FILE, {})
+mock_credentials = load_json_file(CREDENTIALS_FILE, {})
 
 SECRET_KEY = "lawsa_secret_key"
 ALGORITHM = "HS256"
@@ -54,6 +87,9 @@ async def register(req: dict):
         raise HTTPException(status_code=400, detail="User already exists")
     
     mock_users[email] = {"email": email, "password": password, "name": email.split('@')[0]}
+    
+    # Save to persistent storage
+    save_json_file(USERS_FILE, mock_users)
     
     # Create JWT token
     payload = {"sub": email, "exp": datetime.utcnow() + timedelta(hours=24)}
@@ -115,6 +151,7 @@ async def create_workflow(workflow: dict, user=Depends(get_current_user)):
     }
     
     mock_workflows[workflow_id] = workflow_data
+    save_json_file(WORKFLOWS_FILE, mock_workflows)
     return workflow_data
 
 @app.get("/api/workflows/{workflow_id}")
@@ -146,6 +183,7 @@ async def update_workflow(workflow_id: str, workflow: dict, user=Depends(get_cur
     }
     
     mock_workflows[workflow_id] = updated_workflow
+    save_json_file(WORKFLOWS_FILE, mock_workflows)
     return updated_workflow
 
 @app.delete("/api/workflows/{workflow_id}")
@@ -158,6 +196,7 @@ async def delete_workflow(workflow_id: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Access denied")
     
     del mock_workflows[workflow_id]
+    save_json_file(WORKFLOWS_FILE, mock_workflows)
     return {"message": "Workflow deleted successfully"}
 
 # Credentials endpoints
@@ -180,6 +219,7 @@ async def create_credential(credential: dict, user=Depends(get_current_user)):
     }
     
     mock_credentials[credential_id] = credential_data
+    save_json_file(CREDENTIALS_FILE, mock_credentials)
     return credential_data
 
 # Execution endpoint
@@ -279,8 +319,10 @@ async def execute_real(request: dict, user=Depends(get_current_user)):
             # Prefer node-provided key, fall back to env
             tavily_key = search_node.get("config", {}).get("api_key") or os.getenv("TAVILY_API_KEY")
             if not tavily_key:
-                raise HTTPException(status_code=400, detail="Missing Tavily API key: provide in node config (api_key) or set TAVILY_API_KEY")
-            tavily_headers = {"X-API-Key": tavily_key, "Content-Type": "application/json"}
+                clean_error = "❌ Missing Tavily API key\n\n💡 Please provide a Tavily API key in the node config (api_key) or set TAVILY_API_KEY environment variable."
+                from fastapi.responses import PlainTextResponse
+                return PlainTextResponse(content=clean_error, status_code=400)
+            tavily_headers = {"Authorization": f"Bearer {tavily_key}", "Content-Type": "application/json"}
             tavily_payload = {"query": query, "num_results": search_node.get("config", {}).get("num_results", 3)}
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
@@ -300,9 +342,13 @@ async def execute_real(request: dict, user=Depends(get_current_user)):
                             clean_result += f"   URL: {url}\n\n"
             except httpx.HTTPStatusError as e:
                 detail = e.response.text if e.response is not None else str(e)
-                raise HTTPException(status_code=400, detail=f"Tavily error: {e.response.status_code if e.response else 'HTTP'} {detail}")
+                clean_error = f"❌ Tavily API Error: {e.response.status_code if e.response else 'HTTP'} {detail}\n\n💡 Please check your Tavily API key and try again."
+                from fastapi.responses import PlainTextResponse
+                return PlainTextResponse(content=clean_error, status_code=400)
             except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Tavily request failed: {str(e)}")
+                clean_error = f"❌ Tavily request failed: {str(e)}\n\n💡 Please check your Tavily API key and try again."
+                from fastapi.responses import PlainTextResponse
+                return PlainTextResponse(content=clean_error, status_code=400)
 
         # LLM via Groq
         llm_node = next((n for n in nodes.values() if n.get("type") in ["llm", "GroqNode", "OpenAINode"]), None)
@@ -317,7 +363,9 @@ async def execute_real(request: dict, user=Depends(get_current_user)):
                 # Prefer node-provided key, fall back to env
                 groq_key = llm_node.get("config", {}).get("api_key") or os.getenv("GROQ_API_KEY")
                 if not groq_key:
-                    raise HTTPException(status_code=400, detail="Missing Groq API key: provide in node config (api_key) or set GROQ_API_KEY")
+                    clean_error = "❌ Missing Groq API key\n\n💡 Please provide a Groq API key in the node config (api_key) or set GROQ_API_KEY environment variable."
+                    from fastapi.responses import PlainTextResponse
+                    return PlainTextResponse(content=clean_error, status_code=400)
                 groq_headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
                 groq_payload = {
                     "model": model,
@@ -338,9 +386,13 @@ async def execute_real(request: dict, user=Depends(get_current_user)):
                                 clean_result += f"🤖 AI Response:\n{llm_content}\n"
                 except httpx.HTTPStatusError as e:
                     detail = e.response.text if e.response is not None else str(e)
-                    raise HTTPException(status_code=400, detail=f"Groq error: {e.response.status_code if e.response else 'HTTP'} {detail}")
+                    clean_error = f"❌ Groq API Error: {e.response.status_code if e.response else 'HTTP'} {detail}\n\n💡 Please check your Groq API key and try again."
+                    from fastapi.responses import PlainTextResponse
+                    return PlainTextResponse(content=clean_error, status_code=400)
                 except Exception as e:
-                    raise HTTPException(status_code=400, detail=f"Groq request failed: {str(e)}")
+                    clean_error = f"❌ Groq request failed: {str(e)}\n\n💡 Please check your Groq API key and try again."
+                    from fastapi.responses import PlainTextResponse
+                    return PlainTextResponse(content=clean_error, status_code=400)
             else:
                 raise HTTPException(status_code=400, detail=f"Unsupported provider for real execution: {provider}")
 
@@ -349,15 +401,34 @@ async def execute_real(request: dict, user=Depends(get_current_user)):
             from fastapi.responses import PlainTextResponse
             return PlainTextResponse(content=clean_result.strip())
         else:
-            return {
-                "status": "success",
-                "search": search_result,
-                "llm": llm_result,
-            }
-    except HTTPException:
-        raise
+            # If no clean result, create a clean error message
+            error_message = ""
+            if search_result is None and llm_result is None:
+                error_message = "❌ No search or LLM nodes found in workflow.\n\n"
+                error_message += "💡 Make sure your workflow contains at least one search or LLM node."
+            elif search_result is None:
+                error_message = "❌ Search failed or no search results found.\n\n"
+                error_message += "💡 Check your Tavily API key and search configuration."
+            elif llm_result is None:
+                error_message = "❌ LLM processing failed.\n\n"
+                error_message += "💡 Check your LLM API key and configuration."
+            else:
+                error_message = "❌ Workflow execution completed but no results were generated.\n\n"
+                error_message += "💡 Check your workflow configuration and node connections."
+            
+            from fastapi.responses import PlainTextResponse
+            return PlainTextResponse(content=error_message)
+    except HTTPException as e:
+        # Convert HTTPException to clean error message
+        from fastapi.responses import PlainTextResponse
+        error_detail = str(e.detail) if hasattr(e, 'detail') else "Unknown error"
+        clean_error = f"❌ Error: {error_detail}\n\n💡 Please check your configuration and try again."
+        return PlainTextResponse(content=clean_error, status_code=e.status_code)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"execute_real failed: {str(e)}")
+        # Convert general exceptions to clean error message
+        from fastapi.responses import PlainTextResponse
+        clean_error = f"❌ Unexpected error: {str(e)}\n\n💡 Please check your configuration and try again."
+        return PlainTextResponse(content=clean_error, status_code=400)
 
 @app.get("/api/tools")
 async def get_tools(user=Depends(get_current_user)):

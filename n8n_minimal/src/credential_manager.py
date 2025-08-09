@@ -296,7 +296,7 @@ class CredentialManager:
     async def _validate_tavily_credential(self, data: Dict[str, Any]) -> CredentialValidationResponse:
         """Validate Tavily API key"""
         try:
-            from langchain_tavily import TavilySearch
+            import httpx
             api_key = data.get("api_key")
             if not api_key:
                 return CredentialValidationResponse(
@@ -304,14 +304,27 @@ class CredentialManager:
                     message="Tavily API key is required"
                 )
             
-            # Test the API key
-            search = TavilySearch(api_key=api_key)
-            response = search.invoke("test")
+            # Test the API key using direct HTTP call (same as main execution)
+            url = "https://api.tavily.com/search"
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            payload = {"query": "test", "num_results": 1}
             
-            return CredentialValidationResponse(
-                valid=True,
-                message="Tavily API key is valid"
-            )
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                
+                # Check if we got a valid response
+                result = response.json()
+                if "results" in result:
+                    return CredentialValidationResponse(
+                        valid=True,
+                        message="Tavily API key is valid"
+                    )
+                else:
+                    return CredentialValidationResponse(
+                        valid=False,
+                        message="Invalid response from Tavily API"
+                    )
             
         except Exception as e:
             return CredentialValidationResponse(

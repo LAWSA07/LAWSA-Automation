@@ -1,11 +1,11 @@
 const API_BASE_URL = 'http://localhost:8000';
 
 class ApiService {
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('lawsa_token');
+  private getAuthHeaders(token?: string): HeadersInit {
+    const authToken = token || localStorage.getItem('lawsa_token');
     return {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(authToken && { Authorization: `Bearer ${authToken}` }),
     };
   }
 
@@ -45,10 +45,10 @@ class ApiService {
   }
 
   // Workflow endpoints
-  async saveWorkflow(workflowData: any) {
+  async saveWorkflow(workflowData: any, token?: string) {
     const response = await fetch(`${API_BASE_URL}/api/workflows`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify(workflowData),
     });
 
@@ -60,10 +60,10 @@ class ApiService {
     return response.json();
   }
 
-  async getWorkflows() {
+  async getWorkflows(token?: string) {
     const response = await fetch(`${API_BASE_URL}/api/workflows`, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
     });
 
     if (!response.ok) {
@@ -74,10 +74,10 @@ class ApiService {
     return response.json();
   }
 
-  async getWorkflow(id: string) {
+  async getWorkflow(id: string, token?: string) {
     const response = await fetch(`${API_BASE_URL}/api/workflows/${id}`, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
     });
 
     if (!response.ok) {
@@ -88,10 +88,10 @@ class ApiService {
     return response.json();
   }
 
-  async updateWorkflow(id: string, workflowData: any) {
+  async updateWorkflow(id: string, workflowData: any, token?: string) {
     const response = await fetch(`${API_BASE_URL}/api/workflows/${id}`, {
       method: 'PUT',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify(workflowData),
     });
 
@@ -103,10 +103,10 @@ class ApiService {
     return response.json();
   }
 
-  async deleteWorkflow(id: string) {
+  async deleteWorkflow(id: string, token?: string) {
     const response = await fetch(`${API_BASE_URL}/api/workflows/${id}`, {
       method: 'DELETE',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
     });
 
     if (!response.ok) {
@@ -118,10 +118,10 @@ class ApiService {
   }
 
   // Credentials endpoints
-  async getCredentials() {
+  async getCredentials(token?: string) {
     const response = await fetch(`${API_BASE_URL}/credentials`, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
     });
 
     if (!response.ok) {
@@ -132,10 +132,10 @@ class ApiService {
     return response.json();
   }
 
-  async saveCredential(credentialData: any) {
+  async saveCredential(credentialData: any, token?: string) {
     const response = await fetch(`${API_BASE_URL}/credentials`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify(credentialData),
     });
 
@@ -148,10 +148,10 @@ class ApiService {
   }
 
   // Execution endpoints
-  async executeWorkflow(workflowId: string, inputData?: any) {
+  async executeWorkflow(workflowId: string, inputData?: any, token?: string) {
     const response = await fetch(`${API_BASE_URL}/workflows/${workflowId}/execute`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify(inputData || {}),
     });
 
@@ -163,10 +163,10 @@ class ApiService {
     return response.json();
   }
 
-  async executeRealWorkflow(workflow: any, input: string, threadId: string) {
+  async executeRealWorkflow(workflow: any, input: string, threadId: string, token?: string) {
     const response = await fetch(`${API_BASE_URL}/execute-real`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify({
         graph: workflow,
         input: input,
@@ -175,8 +175,25 @@ class ApiService {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Failed to execute workflow');
+      // Try to get error message from response
+      const contentType = response.headers.get('content-type');
+      let errorMessage = 'Failed to execute workflow';
+      
+      try {
+        if (contentType && contentType.includes('text/plain')) {
+          // Plain text error response
+          errorMessage = await response.text();
+        } else {
+          // JSON error response
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        }
+      } catch (parseError) {
+        // If we can't parse the error response, use the default message
+        console.error('Error parsing error response:', parseError);
+      }
+      
+      throw new Error(errorMessage);
     }
 
     // Check if the response is text/plain (clean format) or application/json

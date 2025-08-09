@@ -1,0 +1,58 @@
+{
+  "workflow_1": {
+    "id": "workflow_1",
+    "name": "Test User-Provided Tavily Key",
+    "nodes": [
+      {
+        "id": "input-1",
+        "type": "input",
+        "position": {
+          "x": 100,
+          "y": 100
+        },
+        "config": {}
+      },
+      {
+        "id": "tavily-1",
+        "type": "tavily_search",
+        "position": {
+          "x": 300,
+          "y": 100
+        },
+        "config": {
+                          "api_key": "YOUR_TAVILY_API_KEY_HERE",
+          "query_template": "{{input}}",
+          "num_results": 2
+        }
+      },
+      {
+        "id": "output-1",
+        "type": "output",
+        "position": {
+          "x": 500,
+          "y": 100
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1",
+        "source": "input-1",
+        "target": "tavily-1",
+        "sourceHandle": "out",
+        "targetHandle": "in"
+      },
+      {
+        "id": "edge-2",
+        "source": "tavily-1",
+        "target": "output-1",
+        "sourceHandle": "out",
+        "targetHandle": "in"
+      }
+    ],
+    "user_email": "test_24d5d9c6@example.com",
+    "created_at": "2025-08-09T19:47:31.551554",
+    "updated_at": "2025-08-09T19:47:31.551554"
+  }
+}

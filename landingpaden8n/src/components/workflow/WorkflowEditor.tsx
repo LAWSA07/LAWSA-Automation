@@ -22,6 +22,7 @@ import { motion } from 'framer-motion';
 import CustomNode from './CustomNode';
 import NodeConfigPanel from './NodeConfigPanel';
 import { apiService } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
@@ -57,6 +58,21 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
     const [showConfigPanel, setShowConfigPanel] = useState(false);
     const [executionStatus, setExecutionStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
     const [executionOutput, setExecutionOutput] = useState<string>('');
+    const [mounted, setMounted] = useState(false);
+    const [nodeCounter, setNodeCounter] = useState(0);
+    
+    // Use authentication context
+    const { token, user } = useAuth();
+
+    // Generate client-safe unique ID
+    const generateUniqueId = useCallback(() => {
+      return mounted ? `thread_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : 'thread_pending';
+    }, [mounted]);
+
+    // Mount effect to prevent hydration issues
+    useEffect(() => {
+      setMounted(true);
+    }, []);
 
     const onConnect = useCallback(
       (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -86,7 +102,7 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
         });
 
         const newNode: Node = {
-          id: `${type}-${Date.now()}`,
+          id: `${type}-${nodeCounter}`,
           type: 'custom',
           position,
           data: { 
@@ -99,8 +115,9 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
         };
 
         setNodes((nds) => nds.concat(newNode));
+        setNodeCounter(prev => prev + 1);
       },
-      [reactFlowInstance, setNodes]
+      [reactFlowInstance, setNodes, nodeCounter]
     );
 
     const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
@@ -161,7 +178,7 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
           max_tokens: 1000,
         },
         tavily_search: {
-          query_template: '{{input}}',
+          query_template: "{{input}}",
           num_results: 3,
         },
         tool: {
@@ -202,6 +219,13 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
       setExecutionStatus('running');
       setExecutionOutput('Starting workflow execution...\n');
 
+      // Check if user is authenticated
+      if (!token || !user) {
+        setExecutionStatus('error');
+        setExecutionOutput('❌ Authentication required. Please login again.');
+        return;
+      }
+
       try {
         const workflow = {
           name: workflowName,
@@ -237,7 +261,8 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
         const result = await apiService.executeRealWorkflow(
           workflow,
           'Test input for workflow execution',
-          `thread_${Date.now()}`
+          generateUniqueId(),
+          token
         );
 
         setExecutionStatus('success');
@@ -252,12 +277,26 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
         }
       } catch (error) {
         setExecutionStatus('error');
-        setExecutionOutput(prev => prev + `\n❌ Error: ${error}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // If the error message already contains formatting (emojis, etc.), display it directly
+        // Otherwise, add error prefix
+        if (errorMessage.includes('❌') || errorMessage.includes('💡')) {
+          setExecutionOutput(errorMessage);
+        } else {
+          setExecutionOutput(prev => prev + `\n❌ Error: ${errorMessage}`);
+        }
         console.error('Workflow execution failed:', error);
       }
-    }, [workflowName, nodes, edges]);
+    }, [workflowName, nodes, edges, token, user, generateUniqueId]);
 
     const saveWorkflow = useCallback(async () => {
+      // Check if user is authenticated
+      if (!token || !user) {
+        alert('❌ Authentication required. Please login again.');
+        return;
+      }
+
       try {
         const workflow = {
           name: workflowName,
@@ -276,25 +315,14 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
           })),
         };
 
-        const response = await fetch('http://localhost:8000/api/workflows', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('lawsa_token') || ''}`,
-          },
-          body: JSON.stringify(workflow),
-        });
+        const response = await apiService.saveWorkflow(workflow, token);
 
-        if (!response.ok) {
-          throw new Error(`Failed to save workflow: ${response.statusText}`);
-        }
-
-        alert('Workflow saved successfully!');
+        alert('✅ Workflow saved successfully!');
       } catch (error) {
         console.error('Failed to save workflow:', error);
-        alert(`Failed to save workflow: ${error}`);
+        alert(`❌ Failed to save workflow: ${error}`);
       }
-    }, [workflowName, nodes, edges]);
+    }, [workflowName, nodes, edges, token, user]);
 
     // Expose methods to parent component
     React.useImperativeHandle(ref, () => ({
@@ -340,6 +368,11 @@ const WorkflowEditor = React.forwardRef<any, WorkflowEditorProps>(
         ));
       },
     }));
+
+    // Don't render until mounted to prevent hydration issues
+    if (!mounted) {
+      return <div className="flex items-center justify-center h-full text-gray-400">Loading...</div>;
+    }
 
     return (
       <div className="h-full w-full flex">

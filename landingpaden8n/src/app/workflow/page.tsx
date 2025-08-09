@@ -16,14 +16,16 @@ export default function WorkflowPage() {
 
   // Toast notification system
   const [toasts, setToasts] = React.useState<Array<{ id: number; message: string; type: 'success' | 'error' | 'info' }>>([]);
+  const [toastCounter, setToastCounter] = React.useState(0);
   
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now();
+  const showToast = React.useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = toastCounter;
+    setToastCounter(prev => prev + 1);
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id));
     }, 3000);
-  };
+  }, [toastCounter]);
 
   // Auto-save functionality
   const saveWorkflow = React.useCallback(async () => {

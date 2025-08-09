@@ -32,22 +32,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
-  // Check for existing token on mount
+  // Check for existing token on mount - only after component is mounted
   useEffect(() => {
-    const storedToken = localStorage.getItem('lawsa_token');
-    const storedUser = localStorage.getItem('lawsa_user');
+    setMounted(true);
+    
+    // Only access localStorage after component is mounted
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('lawsa_token');
+      const storedUser = localStorage.getItem('lawsa_user');
 
-    if (storedToken && storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        setToken(storedToken);
-        setUser(userData);
-      } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        localStorage.removeItem('lawsa_token');
-        localStorage.removeItem('lawsa_user');
+      if (storedToken && storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setToken(storedToken);
+          setUser(userData);
+        } catch (error) {
+          console.error('Error parsing stored user data:', error);
+          localStorage.removeItem('lawsa_token');
+          localStorage.removeItem('lawsa_user');
+        }
       }
     }
     setIsLoading(false);
@@ -65,8 +71,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(data.access_token);
       setUser(userData);
 
-      localStorage.setItem('lawsa_token', data.access_token);
-      localStorage.setItem('lawsa_user', JSON.stringify(userData));
+      // Only set localStorage after successful login
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lawsa_token', data.access_token);
+        localStorage.setItem('lawsa_user', JSON.stringify(userData));
+      }
 
       router.push('/workflow');
     } catch (error: any) {
@@ -87,8 +96,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('lawsa_token');
-    localStorage.removeItem('lawsa_user');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('lawsa_token');
+      localStorage.removeItem('lawsa_user');
+    }
     router.push('/');
   };
 
@@ -98,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     register,
     logout,
-    isLoading,
+    isLoading: isLoading || !mounted,
   };
 
   return (

@@ -60,10 +60,10 @@ app.post('/api/validate/tool', async (req, res) => {
   const { type, config } = req.body;
   if (type === 'tavily') {
     try {
-      const tavilyRes = await fetch('https://api.tavily.com/v1/search', {
+      const tavilyRes = await fetch('https://api.tavily.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.api_key}` },
-        body: JSON.stringify({ query: 'test', search_depth: 'basic' })
+        body: JSON.stringify({ query: 'test', num_results: 1 })
       });
       return tavilyRes.ok ? res.sendStatus(200) : res.status(401).send('Invalid Tavily API key');
     } catch (e) {

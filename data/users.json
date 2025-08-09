@@ -1,0 +1,7 @@
+{
+  "example@example.com": {
+    "email": "example@example.com",
+    "password": "hashed_password_here",
+    "name": "Example User"
+  }
+}

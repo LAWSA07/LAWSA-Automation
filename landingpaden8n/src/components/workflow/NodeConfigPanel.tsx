@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { X, Save, Settings, Key, Plus } from 'lucide-react';
 import CredentialManager from './CredentialManager';
@@ -93,13 +93,9 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClo
   const [showCredentialManager, setShowCredentialManager] = useState(false);
   const [userCredentials, setUserCredentials] = useState<Credential[]>([]);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setConfig(node.data.config || {});
-    loadUserCredentials();
-  }, [node]);
-
-  const loadUserCredentials = async () => {
+  const loadUserCredentials = useCallback(async () => {
     try {
       const token = localStorage.getItem('lawsa_token');
       const response = await fetch('http://localhost:8000/api/credentials', {
@@ -122,7 +118,18 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClo
     } catch (err) {
       console.error('Failed to load credentials:', err);
     }
-  };
+  }, [config.credential_id]);
+
+  useEffect(() => {
+    setMounted(true);
+    setConfig(node.data.config || {});
+    loadUserCredentials();
+  }, [node, loadUserCredentials]);
+
+  // Don't render until mounted to prevent hydration issues
+  if (!mounted) {
+    return null;
+  }
 
   const handleSave = () => {
     onUpdate(config);
@@ -437,52 +444,57 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, onUpdate, onClo
     </div>
   );
 
-  const renderTavilySearchConfig = () => (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          API Key
-        </label>
-        <input
-          type="password"
-          value={config.api_key || ''}
-          onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
-          placeholder="Enter your Tavily API key"
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-        />
-      </div>
+  const renderTavilySearchConfig = () => {
+    // Ensure config is properly initialized
+    const safeConfig = config || {};
+    
+    return (
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            API Key
+          </label>
+          <input
+            type="password"
+            value={safeConfig.api_key || ''}
+            onChange={(e) => setConfig({ ...safeConfig, api_key: e.target.value })}
+            placeholder="Enter your Tavily API key"
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          Query Template
-        </label>
-        <input
-          type="text"
-          value={config.query_template || '{{input}}'}
-          onChange={(e) => setConfig({ ...config, query_template: e.target.value })}
-          placeholder="{{input}}"
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-        />
-        <p className="text-xs text-gray-400 mt-1">
-          Use {{input}} to reference the input from previous nodes
-        </p>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Query Template
+          </label>
+          <input
+            type="text"
+            value={safeConfig.query_template || "{{input}}"}
+            onChange={(e) => setConfig({ ...safeConfig, query_template: e.target.value })}
+            placeholder="{{input}}"
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            Use {"{"}{"{"} input {"}"} {"}"} to reference the input from previous nodes
+          </p>
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          Number of Results
-        </label>
-        <input
-          type="number"
-          min="1"
-          max="10"
-          value={config.num_results || 3}
-          onChange={(e) => setConfig({ ...config, num_results: parseInt(e.target.value) || 3 })}
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Number of Results
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={safeConfig.num_results || 3}
+            onChange={(e) => setConfig({ ...safeConfig, num_results: parseInt(e.target.value) || 3 })}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          />
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const getConfigContent = () => {
     switch (node.data.type) {

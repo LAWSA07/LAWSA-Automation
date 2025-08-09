@@ -7,7 +7,13 @@ class TavilyNode(Node):
     async def execute(self, inputs: Any = None, options: Dict[str, Any] = None) -> Any:
         query = self.config["query"]
         url = "https://api.tavily.com/search"
-        headers = {"Authorization": f"Bearer {TAVILY_API_KEY}", "Content-Type": "application/json"}
+        
+        # Prefer user-provided API key, fall back to environment variable
+        api_key = self.config.get("api_key") or TAVILY_API_KEY
+        if not api_key:
+            raise ValueError("Tavily API key is required. Please provide it in the node config or set TAVILY_API_KEY environment variable.")
+        
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         payload = {
             "query": query,
             "num_results": self.config.get("num_results", 3),

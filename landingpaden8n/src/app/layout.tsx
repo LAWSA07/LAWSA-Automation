@@ -35,6 +35,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${inter.variable} ${santiBlack.variable} antialiased`}
+        suppressHydrationWarning={true}
       >
         <AuthProvider>
           {children}
